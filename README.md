@@ -126,8 +126,8 @@ ideia → requirements.md → design.md → tasks.md → código
 | `/sdd:spec-tasks <feat> [-y]` | quebra em tarefas de 1–3h com marcadores `(P)` |
 | `/sdd:spec-lint <feat>` | **valida rastreabilidade** (cobertura + refs) |
 | **`/sdd:spec-evals <feat> [--run]`** | golden questions + regressão — **valida correção**, não estrutura |
-| `/sdd:spec-impl <feat> [task]` | implementa via TDD |
-| **`/sdd:spec-impl-auto <feat> [task]`** | loop executor↔aprovador com trava de risco + log |
+| `/sdd:spec-impl <feat> [task]` | implementa via TDD — **roda o loop executor↔aprovador sozinho** se `autoapprove.json` estiver ligado (0.8.0) |
+| `/sdd:spec-impl-auto <feat> [task]` | alias explícito do mesmo loop |
 | `/sdd:spec-quick "<desc>" [--spec-only] [--auto]` | roda tudo num comando |
 | `/sdd:spec-status <feat>` | relatório de progresso |
 | **`/prepare-pr [base]`** | self-review do diff + abre PR no host detectado |
@@ -253,9 +253,85 @@ iteração, risco, tokens, custo). `py tools/approval-gate.py summary --feature 
 `enabled: false` (default) = **comportamento idêntico ao manual** — o modo automático é estritamente
 aditivo, o fluxo de aprovação atual continua sendo o fallback.
 
+**Como é acionado (mudou na 0.8.0).** Com `enabled: true`, **todo `/sdd:spec-impl*` roda o loop
+sozinho** — `spec-impl`, `spec-impl-config`, `spec-impl-investigation` e, por tabela, `spec-quick`.
+Não há comando separado para lembrar; `/sdd:spec-impl-auto` continua existindo como alias explícito.
+A lição veio do uso real: o loop ficou cinco meses ligado na config e nunca rodou, porque vivia num
+comando paralelo ao que a pessoa já chamava. A prova de que rodou é o `approval-log.jsonl` na spec —
+o `spec-status` avisa quando uma spec tem tarefa marcada e não tem ledger.
+
 ```
-/sdd:spec-impl-auto <feature> [tarefas]
+/sdd:spec-impl <feature> [tarefas]      # loop automático se autoapprove.json estiver ligado
 ```
+
+---
+
+## Em produção: o que cinco meses de uso provaram (0.8.0)
+
+Um projeto real de plataforma de dados (People Analytics, ~2.400 notebooks) rodou o motor por cinco
+meses. O inventário, em números anonimizados:
+
+| Medida | Resultado |
+|---|---|
+| Specs criadas pelo fluxo | **35** (de 4 a 9 requisitos cada) |
+| IDs de requisito rastreados | **~1.000** |
+| `spec-lint --all` | **35/35 passam**, 0 erros |
+| Camada 2 gerada (`steering`, `inherited-knowledge`, `integrations`) | sobreviveu ao uso sem regeneração |
+| Loop executor↔aprovador (ligado na config) | **0 execuções** — vivia num comando que ninguém chamava |
+| Grafias distintas de "implementado" em `spec.json` | 11 |
+| Artefatos que o template não previa | 13 (`impacto-contrato`, `evidencia-*`, `rollback/`…) |
+
+As três últimas linhas são a 0.8.0. A rastreabilidade — o diferencial — aguentou; o que falhou
+foi tudo que dependia de a pessoa **lembrar** de um comando ou de um nome. Daí a regra desta
+versão: comportamento novo entra no comando que já se usa, e o que o uso inventa ganha nome fixo.
+
+---
+
+## Os agentes de dados e a trava de escrita (0.8.0)
+
+Para projeto com plataforma de dados — sem ela, nada disto é acionado.
+
+- **`data-analyst`** (`.claude/agents/`) — toda consulta cara passa por ele e o contexto principal
+  recebe só a conclusão: só leitura por construção; **escada de amostragem** (metadados → agregação →
+  amostra `LIMIT 50` → escalona pedindo autorização); PII proibida; número sempre com proveniência;
+  **nunca dump**. Conecta pelo que `integrations.md` diz — perfil, warehouse, armadilhas de CLI —
+  nunca por padrão implícito.
+- **`report-validator`** — auditor adversarial de qualquer relatório (HTML, Markdown, notebook, PDF
+  exportado) **antes de circular**. Reproduz cada número na fonte e rotula: `CONFIRMED`,
+  `CONTRADICTED`, `NOT REPRODUCIBLE`, **`LABEL TOO BROAD`** (conta certa, conjunto nomeado maior que
+  o medido), **`MIXED AXES`** (colunas que respondem perguntas diferentes lado a lado), `UNSUPPORTED`,
+  `POSSIBLY STALE` (a tabela materializou versão nova depois da medição). Julga; não edita.
+- **`tools/write-guard.py`** — hook `PreToolUse` que **nega** escrita SQL fora de
+  `.sdd/write-scope.json` e pede confirmação em alvo ambíguo. Instala **desligado**. Antes de ligar:
+  ```bash
+  py tools/write-guard.py --self-test            # padrões + o que a sua config libera/nega
+  py tools/write-guard.py --check "MERGE INTO prod.core.t USING s ON 1=1"
+  ```
+  e confirme **na plataforma** que cada schema permitido existe com a grafia exata — a instalação
+  que inspirou a tool passou um mês com o schema grafado errado, negando o alvo certo e liberando um
+  inexistente. O hook só vale onde hook roda: dentro de um notebook hospedado ele não existe, e o
+  `CLAUDE.md.template` agora tem a tabela "Where you are running" para dizer isso ao agente.
+
+---
+
+## Artefatos com nome fixo, fase canônica e entrega sem repositório (0.8.0)
+
+`rules/spec-artifacts.md` dá nome ao que o uso inventou, para que `spec-status` e `spec-lint`
+enxerguem:
+
+| Artefato | Papel | Quem lê |
+|---|---|---|
+| `contract-impact.md` | quais consumidores (dashboards, APIs, outros pipelines) dependem do que a spec muda | `risk-classification`: tarefa que toca contrato listado é **`high`** |
+| `evidence/<o-quê>-<AAAA-MM-DD>.md` | prova datada de que um passo rodou, com proveniência | `spec-status`, `report-validator` |
+| `rollback.md` | como desfazer — obrigatório antes de `high` que sobrescreve | o humano no portão |
+
+`spec.json.phase` passa a ter **sete valores canônicos** (`initialized` … `implementation-complete`);
+nuance vai em `status_note`. O `spec-lint` avisa fase desconhecida, inclusive no painel Problems.
+
+E quando **não há git por decisão** — o workspace da plataforma é o versionamento — a linha VCS de
+`integrations.md` aceita `platform`, e `/prepare-pr` monta um **pacote de entrega** em vez de PR:
+frescor do remoto conferido, lista exata do que mudou, um comando de import por arquivo, rollback,
+e "sim" explícito antes de cada import. Sempre `high`.
 
 ---
 
@@ -287,17 +363,20 @@ sdd-kit-de/
 │   ├── commands/
 │   │   ├── sdd/               MOTOR — fluxo + spec-lint + spec-evals + perfis + discover-tools + absorb-knowledge
 │   │   └── prepare-pr.md · review.md · data-quality.md   comandos de entrega
-│   ├── agents/code-explorer.md  subagente genérico de exploração
+│   ├── agents/                code-explorer · approver (sem escrita) · data-analyst (só leitura) · report-validator (julga, não edita)
 │   └── skills/setup-sdd/      assistente de instalação (conversa)
 ├── .sdd/
-│   ├── settings/rules/        MOTOR — regras (EARS, tarefas, discovery, risco, evals, data-readiness, proveniência)
+│   ├── settings/rules/        MOTOR — regras (EARS, tarefas, discovery, risco, evals, data-readiness, proveniência, spec-artifacts)
 │   ├── settings/templates/    MOTOR — esqueletos de spec + steering (inclui evals, semantic-layer, integrations)
 │   ├── settings/templates/vscode/  .vscode do destino (tasks + settings + extensions)
+│   ├── settings/templates/write-scope.json · claude/settings.local.json   escopo de escrita (desligado) · lista `ask`
+│   ├── settings/kit-history.json   caminhos que cada versão publicou (colisão por nome no upgrade)
 │   ├── steering/              VAZIO — gerado por /sdd:steering + discover-tools + absorb-knowledge
 │   └── specs/                 VAZIO — uma pasta por feature
 └── tools/
-    ├── spec-lint.py           o validador de rastreabilidade
+    ├── spec-lint.py           o validador de rastreabilidade (+ fase canônica)
     ├── approval-gate.py       a trava do loop executor↔aprovador
+    ├── write-guard.py         a trava de escopo de escrita (hook PreToolUse, --self-test)
     └── kit-sync.py            backup, preservação de edições locais e UPGRADE.md
 ```
 
@@ -343,7 +422,25 @@ Issues e PRs são bem-vindos — antes de mudar o motor, leia "Três invariantes
 
 ---
 
-*SDD Kit 0.7.0 — adapte à vontade. Comece pelo `setup-sdd`.*
+*SDD Kit 0.8.0 — adapte à vontade. Comece pelo `setup-sdd`.*
+
+### Novidades da 0.8.0
+- **O loop auto roda dentro do `spec-impl`** — ligado em `autoapprove.json`, todo `/sdd:spec-impl*` (e o
+  `spec-quick`) executa o loop executor↔aprovador sozinho; `spec-impl-auto` vira alias. Cinco meses
+  de uso real com o loop ligado e zero execuções ensinaram: comando paralelo não existe na prática.
+- **`data-analyst` e `report-validator`** — subagentes de dados: consulta só leitura com escada de
+  amostragem e sem dump; auditoria adversarial de relatório antes de circular (`LABEL TOO BROAD`,
+  `MIXED AXES`, `POSSIBLY STALE`).
+- **`tools/write-guard.py`** — hook determinístico que nega escrita SQL fora de `.sdd/write-scope.json`;
+  instala desligado; `--self-test` e `--check` para provar o que ele nega antes de confiar.
+- **`rules/spec-artifacts.md`** — fase canônica (7 valores, aviso no lint) e nome fixo para
+  `contract-impact.md` (⇒ `high`), `evidence/` e `rollback.md`.
+- **Entrega sem repositório** — linha VCS `platform` em `integrations.md`; `/prepare-pr` monta pacote
+  de import seletivo, sempre `high`.
+- **`kit-sync` reconhece colisão por nome** (`kit-history.json`): arquivo que o kit passa a publicar mas
+  o projeto já tinha, e nenhuma versão publicou, é preservado — kit ao lado como `.sdd-new`.
+- `CLAUDE.md.template` com "Where you are running" (hook não existe dentro do workspace hospedado) e
+  roteamento para os agentes de dados; `settings.local.json` semeado com a lista `ask` de destrutivos.
 
 ### Novidades da 0.7.0
 - **O linter fala com o editor** — `spec-lint --format=vscode` emite `arquivo:linha:coluna` por achado,

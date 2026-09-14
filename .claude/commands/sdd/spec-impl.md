@@ -21,11 +21,32 @@ Execute implementation tasks for feature **$1** using Test-Driven Development.
 
 ## Execution Steps
 
+### Step 0: Approval posture — read the config, don't ask
+
+Read `.sdd/autoapprove.json` (missing or invalid → treat as `enabled: false`). Say which mode you
+are in, in one line, before touching anything.
+
+- **`auto_approve.enabled: true` → run the executor↔approver loop from here.** Follow
+  `.sdd/settings/rules/orchestration-loop.md` for every task selected in Step 2: decompose into
+  atomic subtasks; classify each per `.sdd/settings/rules/risk-classification.md`; call
+  `py tools/approval-gate.py check --feature $1 --task <id> --risk <level>` (`python3` if `py` is
+  missing) **before every round and obey its exit code** (0 continue · 2 escalate · 3 human); the
+  TDD cycle in Step 3 is what the **executor** does inside a round; the `approver` subagent (Task
+  tool) judges the result against explicit exit criteria; `record` every verdict. `high` is always
+  the human's, whatever the config says. If neither `py` nor `python3` runs, the gate cannot be
+  enforced — say so and fall back to manual mode rather than loop unguarded.
+- **`false` or absent → manual mode**, identical to the behavior before 0.8.0: no approver loop,
+  no ledger; the human gates apply as `CLAUDE.md` describes.
+
+This is the same loop `/sdd:spec-impl-auto` runs — that command remains as an explicit alias.
+
 ### Step 1: Load Context
 
 **Read all necessary context**:
 - `.sdd/specs/$1/spec.json`, `requirements.md`, `design.md`, `tasks.md`
 - **Entire `.sdd/steering/` directory** for complete project memory
+- `.sdd/specs/$1/contract-impact.md` and `rollback.md` if present (see
+  `.sdd/settings/rules/spec-artifacts.md`) — a task touching a listed consumer contract is `high`
 
 **Validate approvals**:
 - Verify tasks are approved in spec.json (stop if not, see Safety & Fallback)
@@ -63,6 +84,11 @@ For each selected task, follow Kent Beck's TDD cycle:
 
 5. **MARK COMPLETE**:
    - Update checkbox from `- [ ]` to `- [x]` in tasks.md
+   - Keep `spec.json.phase` canonical (`.sdd/settings/rules/spec-artifacts.md`): first checked
+     task → `implementation-in-progress`; every task checked → `implementation-complete`. Nuance
+     goes in `status_note`, never in a new phase string.
+   - Proof that a step ran (query results, counts, reconciliations) goes in
+     `.sdd/specs/$1/evidence/<what>-<YYYY-MM-DD>.md`, with provenance — not in ad-hoc files.
 
 ## Critical Constraints
 - **TDD Mandatory**: Tests MUST be written before implementation code

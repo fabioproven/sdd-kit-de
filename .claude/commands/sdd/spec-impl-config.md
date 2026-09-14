@@ -21,9 +21,22 @@ Execute config/infra tasks for feature **$1**, gating each on a validation step.
 
 ## Execution Steps
 
+### Step 0: Approval posture — read the config, don't ask
+Read `.sdd/autoapprove.json` (missing or invalid → `enabled: false`). State the mode in one line.
+- **`enabled: true`** → run the executor↔approver loop per `.sdd/settings/rules/orchestration-loop.md`
+  for every selected task: atomic subtasks, risk per `risk-classification.md`,
+  `py tools/approval-gate.py check` before every round (obey the exit code), the VALIDATE cycle
+  below as the executor's work inside a round, the `approver` subagent judging each result,
+  `record` every verdict. `high` is always human. No `py`/`python3` → say so, fall back to manual.
+- **`false` or absent** → manual mode, identical to before 0.8.0.
+Same loop as `/sdd:spec-impl-auto`, which remains as an explicit alias.
+
 ### Step 1: Load Context
 - Read `.sdd/specs/$1/spec.json`, `requirements.md`, `design.md`, `tasks.md`
 - Load `.sdd/steering/` for canonical config conventions (naming, cluster/env shapes, placeholders)
+- Read `contract-impact.md` and `rollback.md` if present (`.sdd/settings/rules/spec-artifacts.md`):
+  a task touching a listed consumer contract is `high`; an overwrite/migration with no `rollback.md`
+  does not run
 - Verify tasks are approved in spec.json (stop if not)
 
 ### Step 2: Select Tasks
@@ -40,7 +53,10 @@ For each task:
    - Pipelines/manifests: the project's lint/validate command.
    If no validator exists, at minimum assert the file parses and diff it against the mirrored reference.
 4. **VERIFY AGAINST DESIGN** — Confirm the change matches the design's contract and the steering checklist.
-5. **MARK COMPLETE** — Update `- [ ]` to `- [x]` in tasks.md.
+5. **MARK COMPLETE** — Update `- [ ]` to `- [x]` in tasks.md. Keep `spec.json.phase` canonical
+   (`implementation-in-progress` on the first checked task, `implementation-complete` when all are;
+   nuance in `status_note`). Validation output that proves the step (dry-run result, row counts,
+   reconciliation) goes in `evidence/<what>-<YYYY-MM-DD>.md` with provenance.
 
 ## Critical Constraints
 - **No production apply / deploy** — validation and dry-run only.

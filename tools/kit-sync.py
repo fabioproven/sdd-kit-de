@@ -118,6 +118,30 @@ def read_version(kit_dir):
         return "sem versao"
 
 
+HISTORY = os.path.join(".sdd", "settings", "kit-history.json")
+
+
+def kit_history_paths(kit_dir):
+    """União dos caminhos de motor que TODA versão anterior do kit publicou.
+
+    Serve para a primeira instalação com manifesto: um arquivo que já existia
+    no destino e que nenhuma versão do kit jamais publicou não pode ser motor
+    editado — é obra do projeto com o mesmo nome. Sem isso, o kit ao começar a
+    publicar `agents/data-analyst.md` sobrescreveria o `data-analyst.md` que o
+    projeto escreveu à mão. Vazio se o arquivo não existir (comportamento antigo).
+    """
+    p = os.path.join(kit_dir, HISTORY)
+    try:
+        with open(p, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return frozenset()
+    paths = set()
+    for _version, rels in (data.get("versions") or {}).items():
+        paths.update(rels or [])
+    return frozenset(paths)
+
+
 def engine_files(kit_dir):
     """Caminhos relativos de todo arquivo da camada 1 que o kit publica."""
     rels = []
@@ -202,17 +226,31 @@ def cmd_finish(args):
 
     rels = engine_files(kit)
     preserved, first_time = [], (not prev_manifest)
+    ever_shipped = kit_history_paths(kit)
 
-    if not first_time and backup:
+    if backup:
         for rel in rels:
             tgt = os.path.join(target, rel.replace("/", os.sep))
             bak = os.path.join(backup, rel.replace("/", os.sep))
+            src = os.path.join(kit, rel.replace("/", os.sep))
+            if not os.path.isfile(bak) or not os.path.isfile(src):
+                continue                      # nao existia no destino: nada a preservar
             known = prev_manifest.get(rel)
-            if not known or not os.path.isfile(bak):
-                continue                      # arquivo novo nesta versao
-            if sha256(bak) == known:
-                continue                      # intocado desde a ultima instalacao
-            # Editado no destino: a edicao local volta, a do kit fica ao lado.
+            if known:
+                if sha256(bak) == known:
+                    continue                  # intocado desde a ultima instalacao
+                keep = True                   # editado no destino
+            elif not first_time or rel not in ever_shipped:
+                # O kit passa a publicar este caminho AGORA, mas o destino ja tinha um
+                # arquivo com esse nome — e nenhuma versao anterior do kit o publicou.
+                # Logo e obra do projeto (um agente, um hook, uma skill propria):
+                # colisao por nome, nao edicao. Preservar, kit ao lado.
+                keep = sha256(bak) != sha256(src)
+            else:
+                continue                      # primeira instalacao com manifesto: sem como saber
+            if not keep:
+                continue
+            # A edicao/obra local volta, a do kit fica ao lado.
             if os.path.isfile(tgt):
                 shutil.copy2(tgt, tgt + NEW_SUFFIX)
             shutil.copy2(bak, tgt)
@@ -289,9 +327,22 @@ def layer2_gaps(target):
         if "{{" in text:
             gaps.append(("`CLAUDE.md` ainda tem `{{PLACEHOLDERS}}`", "setup-sdd",
                          "o template nunca foi preenchido"))
-        if "approval gate at each phase" in text.lower():
+        low = text.lower()
+        if "approval gate at each phase" in low:
             gaps.append(("`CLAUDE.md` descreve portao por FASE", "setup-sdd",
                          "postura anterior a 0.5.0 — a autonomia por risco nao esta ativa"))
+        # Texto de duas eras convivendo: o "nao use --auto ... o portao e convencao"
+        # do template 0.4.0 sobrevive em CLAUDE.md que ja diz "portoes por risco".
+        if ("the gate is convention, not a lock" in low
+                or "portão é convenção, não trava" in low
+                or "portao e convencao, nao trava" in low):
+            gaps.append(("`CLAUDE.md` ainda diz que o portao 'e convencao, nao trava'", "setup-sdd",
+                         "frase do template 0.4.0; desde 0.8.0 o write-guard e a trava — "
+                         "ligue-o em .sdd/write-scope.json e troque a frase"))
+        if "spec-impl-auto" in low and "0.8" not in low:
+            gaps.append(("`CLAUDE.md` manda usar `/sdd:spec-impl-auto`", "setup-sdd",
+                         "desde 0.8.0 o loop roda dentro de /sdd:spec-impl quando "
+                         "autoapprove.json esta ligado — o comando separado e so alias"))
     else:
         gaps.append(("`CLAUDE.md`", "setup-sdd", "o orquestrador do projeto nao existe"))
 
@@ -321,13 +372,25 @@ def write_report(target, kit, version, prev_version, backup, preserved, orphans,
         L.append(f"**Backup do estado anterior:** `{os.path.relpath(backup, target).replace(os.sep, '/')}`\n")
 
     L.append("\n## O que foi preservado\n")
-    if first_time:
+    if first_time and not preserved:
         L.append(
             "Esta é a primeira instalação com manifesto. Não havia como distinguir "
             "arquivo de motor editado no destino de arquivo original, então **nada foi "
             "restaurado** — o motor novo está inteiro. O backup acima tem o estado "
             "anterior, e da próxima atualização em diante a preservação é automática.\n"
         )
+    elif first_time and preserved:
+        L.append(
+            "Esta é a primeira instalação com manifesto: arquivo de motor que uma versão "
+            "anterior do kit publicou não pôde ser distinguido de edição local, então foi "
+            "**atualizado** (o backup acima guarda o anterior). Já estes arquivos **nunca "
+            "foram publicados por nenhuma versão do kit** — são obra do projeto que colidiu "
+            "por nome com algo que o kit passou a instalar agora. A sua versão ficou; a do "
+            "kit está ao lado como `.sdd-new` para você comparar e fundir:\n"
+        )
+        for rel in preserved:
+            L.append(f"- `{rel}` (nova em `{rel}{NEW_SUFFIX}`)")
+        L.append("")
     elif preserved:
         L.append(
             "Estes arquivos do motor tinham edição local. A sua versão foi mantida; "

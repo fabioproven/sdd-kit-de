@@ -21,9 +21,22 @@ Execute investigation tasks for feature **$1**, writing results into a single `f
 
 ## Execution Steps
 
+### Step 0: Approval posture — read the config, don't ask
+Read `.sdd/autoapprove.json` (missing or invalid → `enabled: false`). State the mode in one line.
+- **`enabled: true`** → run the executor↔approver loop per `.sdd/settings/rules/orchestration-loop.md`
+  for every selected task: atomic subtasks, risk per `risk-classification.md` (investigation tasks
+  are read-only, so usually `low`), `py tools/approval-gate.py check` before every round (obey the
+  exit code), the EVIDENCE cycle below as the executor's work inside a round, the `approver`
+  subagent judging each finding against its threshold, `record` every verdict. No `py`/`python3` →
+  say so, fall back to manual.
+- **`false` or absent** → manual mode, identical to before 0.8.0.
+Same loop as `/sdd:spec-impl-auto`, which remains as an explicit alias.
+
 ### Step 1: Load Context
 - Read `.sdd/specs/$1/spec.json`, `requirements.md`, `design.md`, `tasks.md`
 - Load the entire `.sdd/steering/` directory for project memory
+- Delegate data queries to the `data-analyst` subagent when the project has a data platform
+  (`integrations.md`): it follows the sampling ladder and returns distilled numbers, not dumps
 - Verify tasks are approved in spec.json (stop if not)
 
 ### Step 2: Select Tasks
@@ -36,7 +49,9 @@ For each task, instead of TDD:
 2. **GATHER** — Run the read-only queries / read the files / collect the evidence. Delegate heavy repo search to the explorer subagent so the main context stays lean. Never mutate state.
 3. **INTERPRET** — Compare evidence against the threshold. State the conclusion in one sentence: confirmed / refuted / inconclusive.
 4. **RECORD** — Append the result to `findings.md`: the question, the raw evidence (query result / file excerpt), the interpretation, and the source. Cite where the evidence came from.
-5. **MARK COMPLETE** — Update `- [ ]` to `- [x]` in tasks.md.
+5. **MARK COMPLETE** — Update `- [ ]` to `- [x]` in tasks.md. Keep `spec.json.phase` canonical
+   (`implementation-in-progress` on the first checked task, `implementation-complete` when all are;
+   nuance in `status_note` — see `.sdd/settings/rules/spec-artifacts.md`).
 
 ### Step 4: Findings integrity check
 Before finishing:

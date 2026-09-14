@@ -3,6 +3,71 @@
 Formato: mais recente primeiro. O "motor" (`.claude/commands`, `.sdd/settings`, `tools/`) é a
 camada versionada; reinstalar uma versão nova não toca no seu `.sdd/steering/` nem nas suas specs.
 
+## 0.8.0 — O que cinco meses de uso ensinaram
+
+Esta versão não nasce de uma ideia; nasce de um inventário. Um projeto real rodou o motor 0.4.0
+por cinco meses: 35 specs, ~1.000 IDs de requisito, **35/35 passando no `spec-lint`** — a
+rastreabilidade sobreviveu ao uso. Mas o mesmo inventário mostrou o que o kit **não** entregou:
+o loop executor↔aprovador estava ligado na config e **nunca rodou uma vez** (zero linhas de
+`approval-log.jsonl`), porque morava num comando paralelo que ninguém chama; `spec.json.phase`
+tinha onze grafias de "implementado"; treze artefatos apareceram nas specs sem que o template os
+previsse; e o projeto escreveu à mão, por necessidade, dois subagentes e um hook que o kit deveria
+ter dado. A 0.8.0 é a devolução disso ao motor, generalizado.
+
+- **O loop auto deixa de ser um comando à parte** (`spec-impl.md`, `spec-impl-config.md`,
+  `spec-impl-investigation.md` — novo Step 0): cada perfil lê `.sdd/autoapprove.json` e, se
+  `enabled` é `true`, roda o loop executor↔aprovador sozinho — gate por exit code, `approver`
+  separado, ledger. `spec-quick` herda por tabela. `/sdd:spec-impl-auto` continua como alias
+  explícito. Lição: comportamento novo entra no comando que a pessoa já chama, gated por config;
+  documentação não cria uso.
+- **`data-analyst`** (`.claude/agents/data-analyst.md`): subagente que isola as consultas caras à
+  plataforma de dados. Só leitura por construção; escada de amostragem (metadados → agregação →
+  amostra `LIMIT 50` → escalona com autorização); PII proibida; devolve o número com proveniência,
+  nunca dump. Conecta pelo que `integrations.md` diz, nunca por perfil padrão.
+- **`report-validator`** (`.claude/agents/report-validator.md`): auditor adversarial de qualquer
+  relatório (HTML, Markdown, notebook, PDF exportado) **antes de circular**. Reproduz cada número
+  na fonte e caça `LABEL TOO BROAD`, `MIXED AXES`, `UNSUPPORTED`, `POSSIBLY STALE`. Nasceu de um
+  relatório que atribuiu uma diferença "às coligadas do exterior" enquanto a tabela ao lado mostrava
+  o exterior caindo. Julga; não edita.
+- **`tools/write-guard.py` + `.sdd/write-scope.json`**: hook `PreToolUse` determinístico que **nega**
+  escrita SQL (`CREATE/INSERT/MERGE/UPDATE/DELETE/DROP/TRUNCATE/ALTER/COPY INTO/saveAsTable/GRANT`)
+  fora do escopo permitido e pede confirmação em alvo ambíguo. Instalado **desligado**. Vem com
+  `--self-test` e `--check "<comando>"`, porque a instalação original ficou um mês com o schema
+  grafado errado — negando o alvo certo e liberando um inexistente. O self-test manda confirmar cada
+  alvo na plataforma.
+- **`rules/spec-artifacts.md`**: vocabulário canônico de `spec.json.phase` (sete valores; nuance vai
+  em `status_note`) e nome fixo para os artefatos opcionais que o uso inventou — `contract-impact.md`
+  (consumidor afetado ⇒ tarefa `high`, regra nova em `risk-classification.md`), `evidence/` (prova
+  datada com proveniência), `rollback.md` (obrigatório antes de `high` que sobrescreve). `spec-lint`
+  avisa fase desconhecida (também em `--format=vscode`); `spec-status` lista os artefatos e denuncia
+  spec implementada sem ledger com o loop ligado.
+- **Entrega sem repositório** (`rules/tooling-discovery.md`, `prepare-pr.md`): a linha VCS de
+  `integrations.md` aceita `platform` — o workspace da plataforma é o versionamento, e o projeto
+  não tem git por decisão. `/prepare-pr` então monta um **pacote de entrega**: checagem de frescor
+  do remoto, lista exata dos arquivos alterados, um comando de import por arquivo, rollback — sempre
+  `high`, sempre com "sim" explícito.
+- **`kit-sync.py` — colisão por nome**: arquivo que o kit passa a publicar mas que o destino já
+  tinha, e que **nenhuma versão anterior do kit publicou** (novo `.sdd/settings/kit-history.json`),
+  é obra do projeto — preservado, kit ao lado como `.sdd-new` — mesmo na primeira instalação com
+  manifesto. Sem isso, esta versão apagaria justamente o `data-analyst.md` que a inspirou. O
+  detector do `UPGRADE.md` passou a pegar também as frases do template 0.4.0 que sobrevivem em
+  `CLAUDE.md` de duas eras ("o portão é convenção, não trava", "rode via `spec-impl-auto`").
+- **`CLAUDE.md.template`**: seção "Where you are running" (o agente pode rodar na cópia local *ou*
+  dentro do workspace hospedado, onde hooks e `settings.local.json` **não existem** — a trava só
+  vale onde hook roda, e o arquivo agora diz isso); roteamento para `data-analyst` e
+  `report-validator`; regra de escopo de escrita ligada ao `write-guard`.
+- **`.claude/settings.local.json`** semeado pelo instalador (sem sobrescrever) só com a lista
+  **`ask`** de comandos destrutivos (`git push/reset/clean/checkout/rm/rebase`, `rm -rf`,
+  `Remove-Item`). `setup-sdd` §4 ganhou o passo a passo do write-guard e o roteamento dos agentes.
+- Instaladores em par: `install.ps1` valida os arquivos novos em `$required`, os dois copiam
+  `write-scope.json` e `settings.local.json` sem sobrescrever; `.ps1` deixou de imprimir a versão
+  sem o espaço.
+
+**Reversibilidade:** `write-scope.json` instala com `enabled: false` e sem hook ligado — nada muda
+até o `setup-sdd` oferecer. Com `autoapprove.json` desligado (default do template), `spec-impl*` se
+comporta exatamente como antes. Fase não canônica é aviso, não erro. `platform` só entra em
+`integrations.md` quando o usuário declara que não há repo.
+
 ## 0.7.0 — O kit dentro do editor, e upgrade que não perde contexto
 
 Duas lacunas de operação, não de conceito. A primeira: a trava determinística vivia dentro da

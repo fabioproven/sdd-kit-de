@@ -36,6 +36,9 @@ Generate a unique feature name from the project description ($ARGUMENTS) and ini
 5. **Run Post-Init Integrations**: After files are written, execute any integration actions defined in steering files for the `spec-init` phase. Follow the exact instructions in each steering file.
 
 ## Important Constraints
+- `spec.json.phase` starts as `initialized` and only ever takes the canonical values listed in
+  `.sdd/settings/rules/spec-artifacts.md`; that rule also names the optional artifacts
+  (`contract-impact.md`, `evidence/`, `rollback.md`, …) later phases may add
 - DO NOT generate requirements/design/tasks at this stage
 - Follow stage-by-stage development principles
 - Maintain strict phase separation

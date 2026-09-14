@@ -69,12 +69,19 @@ $required = @(
     '.claude\commands\sdd',
     '.claude\commands\prepare-pr.md',
     '.claude\agents\code-explorer.md',
+    '.claude\agents\data-analyst.md',
+    '.claude\agents\report-validator.md',
     '.claude\skills\setup-sdd\SKILL.md',
     '.sdd\settings',
+    '.sdd\settings\rules\spec-artifacts.md',
     '.sdd\settings\templates\vscode\tasks.json',
+    '.sdd\settings\templates\write-scope.json',
+    '.sdd\settings\templates\claude\settings.local.json',
+    '.sdd\settings\kit-history.json',
     'tools\spec-lint.py',
     'tools\approval-gate.py',
     'tools\kit-sync.py',
+    'tools\write-guard.py',
     'CLAUDE.md.template'
 )
 
@@ -87,7 +94,7 @@ if ($missing) {
 
 $versionFile = Join-Path $KitDir 'VERSION'
 $version = if (Test-Path -LiteralPath $versionFile) {
-    ((Get-Content -LiteralPath $versionFile -Raw) -replace '\s', '')
+    ((Get-Content -LiteralPath $versionFile -Raw).Trim())
 } else {
     'sem versao'
 }
@@ -167,6 +174,27 @@ $autoCfg = Join-Path $TargetDir '.sdd\autoapprove.json'
 if (-not (Test-Path -LiteralPath $autoCfg)) {
     Copy-Item -LiteralPath (Join-Path $KitDir '.sdd\settings\templates\autoapprove.json') `
               -Destination $autoCfg -Force
+}
+
+# Escopo de escrita do write-guard: editavel, DESLIGADO por padrao (nao sobrescreve)
+$scopeCfg = Join-Path $TargetDir '.sdd\write-scope.json'
+if (-not (Test-Path -LiteralPath $scopeCfg)) {
+    Copy-Item -LiteralPath (Join-Path $KitDir '.sdd\settings\templates\write-scope.json') `
+              -Destination $scopeCfg -Force
+}
+
+# Permissoes locais do Claude Code: so a lista `ask` de comandos destrutivos.
+# Nunca sobrescreve - e por maquina; se ja existe e difere, a do kit fica ao lado.
+$permSrc = Join-Path $KitDir '.sdd\settings\templates\claude\settings.local.json'
+$permDst = Join-Path $TargetDir '.claude\settings.local.json'
+if (-not (Test-Path -LiteralPath $permDst)) {
+    Copy-Item -LiteralPath $permSrc -Destination $permDst -Force
+    Write-Host "    .claude\settings.local.json criado (lista 'ask' para comandos destrutivos)"
+} else {
+    $samePerm = (Get-FileHash -LiteralPath $permSrc).Hash -eq (Get-FileHash -LiteralPath $permDst).Hash
+    if (-not $samePerm) {
+        Copy-Item -LiteralPath $permSrc -Destination "$permDst.sdd-new" -Force
+    }
 }
 
 foreach ($f in @('.sdd\steering\.gitkeep', '.sdd\specs\.gitkeep')) {

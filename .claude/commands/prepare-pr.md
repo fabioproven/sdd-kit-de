@@ -16,6 +16,8 @@ argument-hint: [base-branch]
 Read `.sdd/steering/integrations.md` → **VCS / PR host** row.
 - `mcp-native` → use that MCP server's PR tools.
 - `cli` → use the named CLI: `gh pr create` (GitHub), `glab mr create` (GitLab), `az repos pr create` (Azure DevOps).
+- `platform` → there is no repo by decision; the workspace on the data platform is the source of
+  truth. Skip Steps 2 and 5 and run the **delivery package** path in Step 5b instead.
 - `needs-setup` or missing → **stop**; tell the user which integration to configure. Do not improvise.
 If `integrations.md` is absent, run `/sdd:discover-tools` first.
 
@@ -40,8 +42,23 @@ If there are Must-fix items, stop and surface them — do not open the PR.
 - **Opening a PR is outward-facing: read the plan back and wait for an explicit "yes" before pushing or creating the PR.**
 - `git push` is fine as part of the happy path once confirmed; never use `--force` unless the user explicitly asks.
 
+## Step 5b: Delivery package (only when the VCS row is `platform`)
+There is no branch and no PR; delivery is an **import into a shared workspace**, which is a write
+to a system other people read — `high` by `risk-classification.md`, always.
+- **Freshness first**: run the check `integrations.md` names (e.g. `workspace get-status` →
+  `modified_at`) for every file you changed. If the remote copy is newer than your base, **stop**:
+  importing would overwrite someone's edit. Show both timestamps.
+- **Scope = exactly the files this change touched.** Never a directory, never a mirror, never a
+  file you did not edit. List each one with its remote path.
+- Self-review (Step 4) and spec validation (Step 3) still apply.
+- Present the package: the file list, the one-command-per-file import lines with the exact
+  profile/flags from `integrations.md`, and the rollback (the pre-import versions or
+  `rollback.md` from the spec). **Wait for an explicit "yes" before running any import.** Run them
+  one at a time; report each result; stop on the first failure.
+
 ## Critical Constraints
 - Never open the PR without a passing self-review and user confirmation.
+- Never import into a platform workspace without the freshness check and an explicit "yes".
 - Never push to the base branch directly.
 - Never fabricate a "How to test" — derive it from the actual change.
 </instructions>

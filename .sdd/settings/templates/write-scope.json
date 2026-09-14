@@ -1,0 +1,12 @@
+{
+  "_comment": "Escopo de escrita do write-guard (hook PreToolUse). Copiado por install para .sdd/write-scope.json (editavel; nunca sobrescrito). Lido por tools/write-guard.py. Default = DESLIGADO: instalar o kit nao muda o comportamento de nenhum projeto. Ligue quando o projeto tiver um 'so escreve aqui' claro, e rode `python tools/write-guard.py --self-test` depois de editar.",
+  "enabled": false,
+  "allowed_targets": [
+    "dev.sandbox"
+  ],
+  "_allowed_targets_note": "Formatos aceitos: 'catalogo.schema' (exato), 'catalogo.*' (catalogo inteiro), 'schema' (esse schema em qualquer catalogo). Confira a grafia NA PLATAFORMA: schema inexistente aqui inverte a trava.",
+  "default_catalog": null,
+  "_default_catalog_note": "Se a sessao SQL tem catalogo padrao (USE CATALOG), declare-o: 'schema.tabela' passa a ser resolvido em vez de pedir confirmacao.",
+  "on_ambiguous": "ask",
+  "_on_ambiguous_note": "'ask' = alvo nao qualificado pede confirmacao humana; 'ignore' = deixa passar (so o deny de alvo qualificado fora do escopo continua)."
+}

@@ -107,7 +107,27 @@ whether each is actually reachable — plus it probes the data platform and CI. 
 
 ## 4. Suggest guardrails matched to the stack (optional)
 Based on step 1, propose — don't impose — a short list:
-- A `PreToolUse` hook if there's an obvious "never write here" (production config, protected branch, secret files).
+- **The write-guard hook** (`tools/write-guard.py`, config `.sdd/write-scope.json`, installed
+  **off**): if the project has a data platform and a clear "we only write here"
+  (`dev.sandbox`, `analytics.staging`, …), offer to turn it on. Steps, in order: (1) set
+  `allowed_targets` to the exact `catalog.schema` names; (2) **confirm each name exists on the
+  platform** (`databricks schemas list <catalog>`, `bq ls`, `\dn`) — a misspelled schema inverts the
+  guard: it denies the right target and would allow a nonexistent one; (3) run
+  `py tools/write-guard.py --self-test` and read the "libera/NEGA" lines; (4) set `enabled: true`;
+  (5) wire the hook in `.claude/settings.local.json`:
+  ```json
+  "hooks": {"PreToolUse": [{"matcher": "Bash|PowerShell",
+    "hooks": [{"type": "command", "command": "python \"$CLAUDE_PROJECT_DIR/tools/write-guard.py\""}]}]}
+  ```
+  (`py -3` instead of `python` on Windows if `python` is the Store stub). Say plainly: the hook
+  only runs where hooks run — inside a hosted notebook/workspace it does not exist, and there the
+  scope is convention. Put that sentence in `CLAUDE.md` ("Where you are running").
+- Any other `PreToolUse` hook for an obvious "never write here" (production config, protected branch, secret files).
+- **Routing to the data agents** (`CLAUDE.md` → Routing): if there is a data platform, keep the
+  `data-analyst` line (queries go through it: read-only, sampling ladder, no dumps) and the
+  `report-validator` line (any report is audited before it circulates). Make sure
+  `integrations.md` records what they need: exact profile/warehouse, CLI path, payload encoding,
+  shell traps. Without that row they cannot connect.
 - Which `spec-impl` profile fits their work: `spec-impl` (code+TDD), `spec-impl-investigation` (reports), `spec-impl-config` (infra).
 - Wiring `spec-lint` into CI as a required check (add `--require-evals` only once the team is
   actually writing eval suites — turning it on before that just fails every build).
@@ -124,7 +144,10 @@ Based on step 1, propose — don't impose — a short list:
   (logged), `high` always human (non-negotiable; the gate enforces it). This is the posture that gives
   real autonomy while keeping the gate exactly where it matters. Offer the conservative alternative
   (auto `low` only) for teams that want to build trust first. Set `enabled` and the per-level flags
-  accordingly, and confirm `max_iterations` (default 5) and the token/cost ceiling.
+  accordingly, and confirm `max_iterations` (default 5) and the token/cost ceiling. Say explicitly
+  what enabling means: **every `/sdd:spec-impl*` run (and `spec-quick`) executes the loop by
+  itself** — there is no extra command to remember, and the proof it ran is
+  `approval-log.jsonl` appearing in the spec folder.
 - **Gates by risk, not by phase** (`CLAUDE.md`): the generated `CLAUDE.md` says the flow runs
   continuously and only stops for a human on **high-risk** steps. Confirm the project's high-risk scope
   with the user (what counts as writing production data / a consumer contract here) so the gate lands
@@ -135,7 +158,10 @@ Based on step 1, propose — don't impose — a short list:
   read-only `tools/spec-lint.py` / `tools/approval-gate.py` invocations. **Never allowlist
   write-capable commands** (push, import/deploy, destructive SQL) — those must keep prompting, since
   the harness prompt is the last guard when no `PreToolUse` hook exists. Match the shapes to the stack
-  detected in step 1.
+  detected in step 1. The installer already seeded an **`ask` list** for destructive shapes
+  (`git push/reset/clean/checkout/rm/rebase`, `rm -rf`, `Remove-Item`) from
+  `.sdd/settings/templates/claude/settings.local.json` — add the data-platform's destructive verbs
+  (`*delete*`, `secrets`, `permissions`, `fs rm`) to it.
 Leave these as recommendations the user opts into.
 
 ## 5. Prove the install with one real spec

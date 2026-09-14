@@ -32,6 +32,15 @@ Generate status report for feature **$1** showing progress across all phases.
 - **Design**: Check for architecture, components, diagrams
 - **Tasks**: Count completed vs total tasks (parse `- [x]` vs `- [ ]`)
 - **Approvals**: Check approval status in spec.json
+- **Phase vocabulary** (`.sdd/settings/rules/spec-artifacts.md`): if `spec.json.phase` is not one
+  of the canonical values, flag it and propose the canonical one that matches the checkboxes;
+  show `status_note` beside the phase when present. Never rewrite `phase` silently.
+- **Optional artifacts**: list which exist — `evals.md`, `findings.md`, `contract-impact.md`,
+  `evidence/` (count files, newest date), `rollback.md`, `approval-log.jsonl`. A
+  `contract-impact.md` with no `rollback.md` on a spec that overwrites data is a blocker to name.
+- **Auto-approval in use?** Read `.sdd/autoapprove.json`. If `enabled` is true and the spec has
+  tasks checked but **no** `approval-log.jsonl`, say so: the loop was configured but this spec was
+  implemented outside it (older kit, or manual override) — the ledger has no record of who approved.
 
 ### Step 3: Generate Report
 

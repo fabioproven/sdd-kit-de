@@ -71,6 +71,18 @@ For each area, classify the **access method** by checking, in this order:
 Detect the **VCS host from the git remote** (`git remote -v`) even when no CLI exists — it tells
 you which PR backend the project targets.
 
+### When the platform *is* the version control (`platform`)
+
+Some projects have no git by decision: the source of truth is a workspace on the data platform
+(Databricks Workspace, Fabric, Synapse, a notebook service) and the local copy is an export of it.
+That is not `needs-setup` — nothing is missing — and not `n/a` — delivery still happens. Record
+the VCS row as method **`platform`**, naming the sync mechanism (e.g. `databricks workspace
+export`/`import`, one file at a time) and the freshness check that must run before editing
+(e.g. `workspace get-status` → `modified_at`). `/prepare-pr` then produces a **delivery package**
+instead of a PR: the list of changed files and the exact import commands, always gated as `high`
+because import is a write to a shared system. Never record `platform` on a guess — only when the
+user has said there is no repo, or there is demonstrably no `.git` and the steering explains why.
+
 ## Rules
 
 - **Read-only probing only.** `command -v`, `git remote -v`, listing tools. Never run a command
@@ -84,6 +96,9 @@ you which PR backend the project targets.
 ## Output — `.sdd/steering/integrations.md`
 
 Use the steering-custom `integrations.md` template. One row per capability area with:
-`area · backend · access method (mcp-native | cli | needs-setup | n/a) · command/tool name ·
-note`. End with a short **"To enable"** list for every `needs-setup` row (which MCP server or
+`area · backend · access method (mcp-native | cli | platform | needs-setup | n/a) · command/tool
+name · note`. For the data platform row, also record the quirks the `data-analyst` and
+`report-validator` agents will need: exact profile/warehouse to use, CLI location if it does not
+resolve on PATH, payload encoding (BOM or not), and shell traps (e.g. Git Bash rewriting `/api/...`
+paths — `MSYS_NO_PATHCONV=1`). End with a short **"To enable"** list for every `needs-setup` row (which MCP server or
 CLI to add). This file is the contract the delivery commands rely on.

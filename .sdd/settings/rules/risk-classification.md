@@ -1,8 +1,9 @@
 # Risk Classification Rules
 
 Every subtask is classified **before execution** into one of three levels. The level decides who
-approves it. Loaded by `/sdd:spec-impl-auto` and by the approver agent. The classification is an
-input to the deterministic gate (`tools/approval-gate.py`), never a substitute for it.
+approves it. Loaded by every `spec-impl*` profile (and `/sdd:spec-impl-auto`) and by the approver
+agent. The classification is an input to the deterministic gate (`tools/approval-gate.py`), never
+a substitute for it.
 
 ## The three levels
 
@@ -30,6 +31,12 @@ If in doubt between two levels, pick the **higher** one. Under-classifying is th
 - **Outward-facing == high.** Anything that leaves the repo (push, PR, deploy, publish, send) is high.
 - **Unknown data effect == high.** If you cannot determine whether a subtask mutates existing data,
   treat it as high and route to the human.
+- **A named consumer contract == high.** If the spec has `contract-impact.md`
+  (`.sdd/settings/rules/spec-artifacts.md`), any subtask that changes something a listed consumer
+  depends on — a column, a grain, a schema, an endpoint, a file layout — is high, even when the
+  write itself looks non-destructive. Breaking a consumer is irreversible from the consumer's side.
+- **No rollback plan, no high approval.** When the subtask overwrites or migrates existing data,
+  `rollback.md` must exist before it is presented to the human.
 
 ## Output of classification
 

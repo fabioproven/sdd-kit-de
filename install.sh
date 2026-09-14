@@ -7,10 +7,13 @@
 #   ./install.sh .                      # instala no diretório atual
 #
 # O que faz:
-#   - copia a CAMADA 1 (motor): comandos SDD, rules, templates, o linter e o
-#     subagente code-explorer + a skill setup-sdd
+#   - copia a CAMADA 1 (motor): comandos SDD, rules, templates, as tools
+#     (spec-lint, approval-gate, kit-sync, write-guard), os subagentes
+#     (code-explorer, approver, data-analyst, report-validator) + a skill setup-sdd
 #   - cria .sdd/steering e .sdd/specs VAZIOS (a serem gerados por /sdd:steering)
 #   - instala CLAUDE.md a partir do template (sem sobrescrever um existente)
+#   - instala .sdd/autoapprove.json e .sdd/write-scope.json editaveis (desligados,
+#     sem sobrescrever) e .claude/settings.local.json com a lista `ask` (idem)
 #   - instala .vscode/ (tasks, settings, extensions) sem sobrescrever
 #   - NÃO gera a camada de projeto — isso é o próximo passo, com o agente
 #
@@ -83,6 +86,23 @@ cp "$KIT_DIR/VERSION" "$TARGET/.sdd/SDD_KIT_VERSION" 2>/dev/null || true
 # Config do modo aprovador automatico: instala a versao editavel (nao sobrescreve)
 if [ ! -f "$TARGET/.sdd/autoapprove.json" ]; then
   cp "$KIT_DIR/.sdd/settings/templates/autoapprove.json" "$TARGET/.sdd/autoapprove.json"
+fi
+
+# Escopo de escrita do write-guard: editavel, DESLIGADO por padrao (nao sobrescreve)
+if [ ! -f "$TARGET/.sdd/write-scope.json" ]; then
+  cp "$KIT_DIR/.sdd/settings/templates/write-scope.json" "$TARGET/.sdd/write-scope.json"
+fi
+
+# Permissoes locais do Claude Code: so a lista `ask` de comandos destrutivos.
+# Nunca sobrescreve — e por maquina; se ja existe, a do kit fica ao lado.
+mkdir -p "$TARGET/.claude"
+src="$KIT_DIR/.sdd/settings/templates/claude/settings.local.json"
+dst="$TARGET/.claude/settings.local.json"
+if [ ! -f "$dst" ]; then
+  cp "$src" "$dst"
+  echo "    .claude/settings.local.json criado (lista 'ask' para comandos destrutivos)"
+elif ! cmp -s "$src" "$dst"; then
+  cp "$src" "$dst.sdd-new"
 fi
 
 # keep empty dirs under version control

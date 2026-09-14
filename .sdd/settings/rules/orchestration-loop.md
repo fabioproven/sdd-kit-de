@@ -1,7 +1,9 @@
 # Orchestration Loop Rules
 
-The executor<->approver protocol for the auto-approval mode. Loaded by `/sdd:spec-impl-auto`.
-Two distinct roles, a deterministic gate between every round, and a log of every decision.
+The executor<->approver protocol for the auto-approval mode. Loaded by every `spec-impl*` profile
+(`spec-impl`, `spec-impl-config`, `spec-impl-investigation`) when `.sdd/autoapprove.json` has
+`enabled: true`, and by `/sdd:spec-impl-auto`, its explicit alias. Two distinct roles, a
+deterministic gate between every round, and a log of every decision.
 
 ## Roles (kept separate on purpose)
 

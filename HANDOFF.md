@@ -1,4 +1,4 @@
-# Handoff — SDD Kit v0.7.0
+# Handoff — SDD Kit v0.8.0
 
 Guia rápido para quem está recebendo o kit. Leitura de 3 minutos. Detalhes no `README.md`.
 
@@ -72,21 +72,37 @@ Em projeto sem plataforma de dados, nada disso é acionado.
 3. **Portões por risco, não por fase** — `low`/`medium` correm sozinhos e logados com o modo aprovador
    ligado; **`high` é sempre humano**, sem exceção, e nenhuma flag ou config muda isso.
 
-## Modo aprovador automático (opcional, DESLIGADO por padrão)
+## Modo aprovador automático (config em `.sdd/autoapprove.json`, DESLIGADO por padrão)
 
-`/sdd:spec-impl-auto` reduz aprovações com um loop executor↔aprovador, com trava de risco:
+Ligado, **todo `/sdd:spec-impl*` (e o `spec-quick`) roda sozinho** um loop executor↔aprovador com
+trava de risco — desde a 0.8.0 não existe comando separado para lembrar (`spec-impl-auto` é só alias):
 - **low** (ler/analisar/documentar) automático · **medium** (novo modelo/transformação) o aprovador
-  decide, logado · **high** (schema, delete/overwrite, deploy) **sempre humano**.
+  decide, logado · **high** (schema, delete/overwrite, deploy, contrato de consumidor) **sempre humano**.
 - Loop infinito é impossível: `tools/approval-gate.py` conta as iterações num ledger em disco e escala
-  pro humano no teto (default 5). Tudo logado em `.sdd/specs/<feature>/approval-log.jsonl`.
+  pro humano no teto (default 5). Tudo logado em `.sdd/specs/<feature>/approval-log.jsonl` — se a spec
+  tem tarefa marcada e não tem ledger, o loop não rodou nela; o `spec-status` avisa.
 - Liga/desliga por nível em `.sdd/autoapprove.json`. Comece conservador: só `low`, e observe o log encher.
 
-## O que NÃO foi validado (seja o primeiro a testar)
+## Os agentes de dados e a trava de escrita (0.8.0, para projeto com plataforma de dados)
 
-Os fluxos conversacionais (setup, discovery, o loop do `spec-impl-auto`) são prompts bem definidos e o
-mecanismo determinístico (linter, gate, ledger) foi testado — mas rodar isso ponta a ponta no SEU
-projeto é a estreia. Por isso o `--spec-only` e o modo read-only das descobertas existem: falham de
-forma segura na primeira vez. Manda feedback.
+- **`data-analyst`** — toda consulta à plataforma passa por ele: só leitura, escada de amostragem
+  (metadados → agregação → `LIMIT 50`), sem PII, devolve o número com proveniência e nunca dump.
+- **`report-validator`** — antes de qualquer relatório circular: reproduz cada número na fonte e
+  caça rótulo mais amplo que a evidência, eixos misturados, afirmação sem lastro, número defasado.
+- **`tools/write-guard.py`** — hook que **nega** escrita SQL fora de `.sdd/write-scope.json`. Instala
+  desligado. Antes de ligar: `py tools/write-guard.py --self-test` e confirme na plataforma que cada
+  schema permitido existe com a grafia exata — schema errado inverte a trava. E lembre: o hook só
+  vale onde hook roda; dentro de um notebook hospedado ele não existe.
+
+## O que já foi validado em produção — e o que ainda não
+
+Um projeto real de plataforma de dados rodou o motor por cinco meses: **35 specs, ~1.000 IDs de
+requisito, 35/35 passando no `spec-lint`**. `absorb-knowledge`, `discover-tools` e `steering` geraram
+uma camada 2 que sobreviveu ao uso. O que **não** rodou lá foi o loop executor↔aprovador — estava
+ligado na config e ninguém chamou o comando; a 0.8.0 existe em boa parte por isso (agora ele roda
+dentro do `spec-impl`). A estreia que ainda falta é justamente essa: uma spec inteira pelo loop, com
+o `approval-log.jsonl` enchendo. O `--spec-only` e o modo read-only das descobertas continuam
+existindo para a primeira vez falhar de forma segura. Manda feedback.
 
 ## Mapa rápido
 
@@ -96,6 +112,9 @@ forma segura na primeira vez. Manda feedback.
 - `CHANGELOG.md` — o que veio em cada versão.
 - `.claude/commands/` — os comandos (`sdd/*` + `prepare-pr`/`review`/`data-quality`).
 - `.sdd/settings/` — motor (rules + templates). `.sdd/steering/` nasce vazio (é gerado).
-- `tools/spec-lint.py` e `tools/approval-gate.py` — as travas determinísticas.
+- `tools/spec-lint.py`, `tools/approval-gate.py`, `tools/write-guard.py` — as travas determinísticas
+  (rastreabilidade, loop, escopo de escrita); `tools/kit-sync.py` — continuidade entre versões.
+- `.claude/agents/` — `code-explorer`, `approver`, `data-analyst`, `report-validator`.
 - `.sdd/settings/rules/` — `data-readiness.md` (escada de fontes), `evals.md` (golden questions),
-  `answer-provenance.md` (fonte/freshness/confiança em toda resposta com número).
+  `answer-provenance.md` (fonte/freshness/confiança em toda resposta com número),
+  `spec-artifacts.md` (fases canônicas + `contract-impact.md` / `evidence/` / `rollback.md`).

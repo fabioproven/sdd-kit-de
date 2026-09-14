@@ -619,9 +619,53 @@
     </div>
   </section>
 
+  <!-- v0.8.0 — O QUE CINCO MESES DE USO ENSINARAM -->
+  <section class="blk">
+    <h2 class="hdln">O que cinco meses de uso ensinaram <span class="mono" style="font-size:14px;color:var(--agent-ink);background:var(--agent-soft);padding:2px 8px;border-radius:6px;vertical-align:middle">v0.8.0</span></h2>
+    <p class="sub">Um projeto real rodou o motor por cinco meses: <b>35 specs, ~1.000 IDs, 35/35 no linter</b>. A rastreabilidade aguentou. O que falhou foi tudo que dependia de a pessoa <b>lembrar</b> de um comando ou de um nome — e o que o projeto teve de escrever à mão porque o kit não dava.</p>
+
+    <div class="risks">
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">loop ·</span> dentro do comando que já se usa</h4>
+        <p>O loop executor↔aprovador ficou cinco meses <b>ligado na config e nunca rodou</b> — vivia em <span class="mono">spec-impl-auto</span>, que ninguém chamava. Agora <span class="mono">spec-impl</span> lê <span class="mono">autoapprove.json</span> e roda o loop sozinho. Comando paralelo não existe na prática.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">agentes ·</span> quem responde e quem confere</h4>
+        <p><span class="mono">data-analyst</span>: consulta só leitura, escada de amostragem, devolve o número com proveniência — nunca dump. <span class="mono">report-validator</span>: antes de um relatório circular, reproduz cada número na fonte e caça <b>rótulo amplo demais</b> e <b>eixos misturados</b>.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--human)">
+        <h4><span class="rk" style="color:var(--human-ink)">trava ·</span> escopo de escrita por hook</h4>
+        <p><span class="mono">write-guard.py</span> nega <span class="mono">INSERT/MERGE/DROP…</span> fora de <span class="mono">write-scope.json</span>. Instala desligado, e vem com <span class="mono">--self-test</span>: a instalação original passou um mês com o schema grafado errado — negando o certo, liberando o inexistente.</p>
+      </div>
+    </div>
+
+    <div class="thread" style="margin-top:16px">
+      <div class="node">
+        <p class="where">fase</p><span class="id">7 valores</span>
+        <p class="desc">onze grafias de "implementado" viraram um enum; nuance vai em <span class="mono">status_note</span></p>
+      </div>
+      <div class="node">
+        <p class="where">contrato</p><span class="id" style="color:var(--human-ink);background:var(--human-soft)">high</span>
+        <p class="desc"><span class="mono">contract-impact.md</span>: consumidor listado ⇒ tarefa é do humano</p>
+      </div>
+      <div class="node">
+        <p class="where">evidência</p><span class="id">datada</span>
+        <p class="desc"><span class="mono">evidence/&lt;o-quê&gt;-&lt;data&gt;.md</span>, com proveniência</p>
+      </div>
+      <div class="node">
+        <p class="where">entrega</p><span class="id" style="color:var(--human-ink);background:var(--human-soft)">platform</span>
+        <p class="desc">sem git por decisão: pacote de import seletivo, sempre <b>high</b></p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <p style="margin:0"><b>Onde a trava não chega:</b> hook e <span class="mono">settings.local.json</span> só existem na cópia local. Dentro do workspace hospedado o agente roda <b>sem guarda determinística</b> — e o <span class="mono">CLAUDE.md</span> agora tem a tabela "Where you are running" para dizer isso a ele em vez de fingir que a regra trava em todo lugar.</p>
+    </div>
+  </section>
+
   <footer class="ft">
     <p class="core">O ciclo, em uma frase: <b>escreva o QUÊ testável → aprove → derive o COMO rastreável → aprove → quebre em tarefas verificáveis → aprove → execute marcando o que terminou.</b> Tudo o mais — steering, subagentes, hooks, aprovador automático — é a camada que faz isso não colapsar num repo grande.</p>
-    <p class="meta">Fluxo SDD portável (SDD Kit v0.7.0) · o exemplo que ancora as estações é uma spec de investigação, por isso o passo 5 produz um relatório, não código. Modo aprovador automático desligado por padrão — os portões humanos são o fallback.</p>
+    <p class="meta">Fluxo SDD portável (SDD Kit v0.8.0) · o exemplo que ancora as estações é uma spec de investigação, por isso o passo 5 produz um relatório, não código. Modo aprovador automático desligado por padrão — os portões humanos são o fallback; ligado, o loop roda dentro do próprio <span class="mono">spec-impl</span>.</p>
     <p class="meta">Desenvolvido por <b>Fabio Provençale</b> · <a href="mailto:fabio.provencale@gmail.com">fabio.provencale@gmail.com</a> · <a href="https://www.linkedin.com/in/fabio-provencale/" rel="noopener">LinkedIn</a> · Licença MIT.</p>
   </footer>
 

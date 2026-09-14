@@ -12,6 +12,11 @@ argument-hint: <feature-name> [task-numbers]
 </background_information>
 
 <instructions>
+> **Since 0.8.0 this loop is not a separate path.** `/sdd:spec-impl`, `/sdd:spec-impl-config` and
+> `/sdd:spec-impl-investigation` read `.sdd/autoapprove.json` themselves and run this exact loop
+> when `enabled` is true — so `/sdd:spec-quick` inherits it too. This command stays as the explicit
+> alias for people who want to name the mode; the behavior is identical.
+
 ## Step 0: Load config and check the master switch
 - Read `.sdd/autoapprove.json` (fallback: the template default). Read the rules:
   `.sdd/settings/rules/orchestration-loop.md` and `.sdd/settings/rules/risk-classification.md`.

@@ -31,8 +31,20 @@ Sem dependências externas — Python 3.7+ stdlib apenas.
 """
 import argparse
 import os
+import json
 import re
 import sys
+
+# Fases canônicas de spec.json.phase — a mesma lista de rules/spec-artifacts.md.
+CANONICAL_PHASES = (
+    "initialized",
+    "requirements-generated",
+    "design-generated",
+    "tasks-generated",
+    "tasks-approved",
+    "implementation-in-progress",
+    "implementation-complete",
+)
 
 # Console Windows (cp1252) não encoda glyphs unicode — força UTF-8 quando dá.
 try:
@@ -293,6 +305,24 @@ def lint_spec(spec_dir, require_evals=False, diags=None, report=True):
                    f"referência a nível de requisito ({d}) — prefira o ID N.M")
 
     # 3. ÓRFÃS — sub-tarefa sem _Requirements:_
+    # Fase canônica (rules/spec-artifacts.md): onze grafias de "implementado" num
+    # projeto real deixaram o spec-status cego. Aviso, não erro — fase não afeta
+    # rastreabilidade; afeta quem tenta agregar.
+    spec_json = os.path.join(spec_dir, "spec.json")
+    if os.path.isfile(spec_json):
+        try:
+            with open(spec_json, encoding="utf-8-sig") as f:
+                phase = json.load(f).get("phase")
+        except (OSError, ValueError):
+            phase = None
+        if phase is not None and phase not in CANONICAL_PHASES:
+            warnings.append(
+                f"spec.json.phase '{phase}' não é canônica — use uma de: "
+                + ", ".join(CANONICAL_PHASES) + " (nuance vai em status_note)"
+            )
+            _d("warning", spec_json, 1,
+               f"phase '{phase}' não é canônica (ver rules/spec-artifacts.md)")
+
     orphans = [t for (t, is_sub, has_ref) in tasks if is_sub and not has_ref]
     if orphans:
         warnings.append("Sub-tarefas sem linha _Requirements:_: " + ", ".join(orphans))

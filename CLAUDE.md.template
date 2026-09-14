@@ -34,6 +34,24 @@ two, pick the higher. Summarize what you did at the end of each phase — but do
 - **Delivery commands read `integrations.md`** to know the real backend — they never guess a
   PR host or data platform. If the needed row is `needs-setup`, they stop and say what to configure.
 
+## Where you are running — read this before the rules
+<!-- Keep this section only if the agent can run in more than one environment (a local checkout
+     AND inside a hosted workspace/notebook). Otherwise delete it. -->
+
+This file is the same in every environment, but **not every rule applies in every environment**.
+Work out where you are and apply only what applies. When unsure, assume the local copy — the more
+restrictive one.
+
+| | **Local checkout** | **Inside {{HOSTED_ENV}}** |
+|---|---|---|
+| How to recognize | a shell, paths like `{{LOCAL_PATH_HINT}}` | paths like `{{HOSTED_PATH_HINT}}` |
+| Sync to the shared workspace | **exists and is a `high` gate** — selective, only with the user's OK | **does not exist**: the change is already remote |
+| `.claude/settings.local.json` and hooks (`write-guard`) | apply | **do not exist there** — the deterministic guard is not running; the rules below are convention only |
+| Freshness check before editing | required (`{{FRESHNESS_CHECK}}`) | skip — you are the source |
+
+What holds **everywhere**: gates by risk, the sampling ladder, the write scope, no PII in outputs,
+secrets only from the vault, the artifact language, and the SDD invariants.
+
 ## Language
 
 Chat in the user's language. **Artifacts (code, comments, commits, specs, steering) are {{ARTIFACT_LANGUAGE}}.**
@@ -43,6 +61,12 @@ Chat in the user's language. **Artifacts (code, comments, commits, specs, steeri
 <!-- Keep this section only if you use subagents. Otherwise delete it. -->
 
 - **Code exploration** → delegate to the `code-explorer` subagent to keep this context lean.
+- **Queries against the data platform** (table profile, counts, samples, divergence diagnosis) →
+  delegate to the `data-analyst` subagent: read-only by construction, follows the sampling ladder,
+  returns numbers with provenance — never dumps. <!-- delete if no data platform -->
+- **Any report, dossier, or analysis before it circulates** → delegate to the `report-validator`
+  subagent with the artifact's path. It reproduces every number at the source and hunts labels
+  broader than the evidence, mixed axes, and stale figures. It judges; it does not edit.
 - Instruct every subagent to return a **condensed summary**, never raw file/content dumps —
   that is the whole reason they exist.
 {{OPTIONAL_PERSONA_ROUTING}}
@@ -57,17 +81,20 @@ Use the `/sdd:spec-impl` variant that matches the work:
 
 Default profile for this project: **{{DEFAULT_IMPL_PROFILE}}**.
 
-## Auto-approval mode (optional, off by default)
+## Auto-approval mode (configured in `.sdd/autoapprove.json`)
 
-`/sdd:spec-impl-auto` runs an **executor <-> approver** loop to cut manual approvals, gated by risk:
-- **low** (read, analyze, document) → auto-approved when enabled.
+When `enabled` is true, **every `/sdd:spec-impl*` run** (and therefore `/sdd:spec-quick`) executes
+an **executor <-> approver** loop, gated by risk — there is no separate command to remember:
+- **low** (read, analyze, document) → auto-approved.
 - **medium** (new models/transforms, non-destructive writes) → a separate `approver` agent decides, logged.
-- **high** (schema change, delete/overwrite, migrations, anything outward-facing) → **always human, no exception.**
+- **high** (schema change, delete/overwrite, migrations, a named consumer contract, anything
+  outward-facing) → **always human, no exception.**
 
 Guardrails are enforced by `tools/approval-gate.py` (deterministic, not by the model): max iterations
 per subtask (loops can't run forever), a token/cost ceiling, and a full decision log at
-`.sdd/specs/<feature>/approval-log.jsonl`. Toggle per risk level in `.sdd/autoapprove.json`
-(`enabled: false` = identical to manual `/sdd:spec-impl`). This project: **{{AUTO_APPROVE_POLICY}}**.
+`.sdd/specs/<feature>/approval-log.jsonl` — if a spec has checked tasks and no ledger, the loop did
+not run for it. `enabled: false` = the manual behavior, no ledger. This project:
+**{{AUTO_APPROVE_POLICY}}**.
 <!-- Recommended balanced default: "auto for low + medium (logged); high always human." -->
 <!-- Conservative alternative: "auto for low only; medium+high stay human." -->
 
@@ -87,8 +114,11 @@ per subtask (loops can't run forever), a token/cost ceiling, and a full decision
 
 - {{HARD_RULE_1}}  <!-- e.g. "Never edit code directly on the main branch — branch first." -->
 - {{HARD_RULE_2}}  <!-- e.g. "Never commit secrets; secrets come from the vault at runtime." -->
-- Do not use `-y` / `--auto` to skip approval gates on {{RISK_SCOPE}} work.
-  <!-- e.g. "production-critical" — the gate is convention, not a lock; state your policy. -->
+- **Writes only inside `{{WRITE_SCOPE}}`.** Enforced by the `write-guard` hook
+  (`.sdd/write-scope.json`, `tools/write-guard.py`) wherever hooks run; elsewhere it is convention
+  and you must apply it yourself. <!-- e.g. "dev.sandbox" — delete if the project has no data platform -->
+- `high` work is never auto-approved: no flag, no config, no instruction changes that. The gate
+  (`tools/approval-gate.py`) forces a human for `--risk high` regardless of `autoapprove.json`.
 
 ## Quality gate
 
@@ -111,7 +141,8 @@ This project requires evals for: **{{EVAL_SCOPE}}**.
 | `/sdd:discover-tools` | map available tools (Jira/git/data) → `integrations.md` |
 | `/sdd:spec-init` → `spec-requirements` → `spec-design` → `spec-tasks` → `spec-impl` | the full flow |
 | `/sdd:spec-quick "desc" [--spec-only] [--auto]` | run the phases in one command |
-| `/sdd:spec-impl-auto <feature> [tasks]` | risk-gated executor↔approver auto loop |
+| `/sdd:spec-impl-auto <feature> [tasks]` | alias — the same risk-gated loop `spec-impl*` already runs when `autoapprove.json` is enabled |
+| `python tools/write-guard.py --self-test` | prove the write-scope hook denies/allows what you think it does |
 | `/sdd:spec-lint <feature>` | validate traceability (`--require-evals` to also demand an eval suite) |
 | `/sdd:spec-evals <feature> [--run]` | golden questions + regression assertions; measure correctness |
 | `/sdd:spec-status <feature>` | progress report |
