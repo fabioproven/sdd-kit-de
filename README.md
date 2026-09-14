@@ -420,6 +420,10 @@ Desenvolvido por **Fabio Provençale** — [fabio.provencale@gmail.com](mailto:f
 Licença **MIT** (ver `LICENSE`): use, adapte e redistribua à vontade, mantendo o aviso de autoria.
 Issues e PRs são bem-vindos — antes de mudar o motor, leia "Três invariantes a proteger" acima.
 
+O fluxo de comandos `/sdd:*`, as rules de design/EARS/tarefas/steering e os templates de spec vêm do
+projeto open source **[cc-sdd](https://github.com/gotalab/cc-sdd)** (gotalab, MIT), adaptados. O aviso
+de licença deles e a lista do que é original deste kit estão em `THIRD_PARTY_NOTICES.md`.
+
 ---
 
 *SDD Kit 0.8.0 — adapte à vontade. Comece pelo `setup-sdd`.*
