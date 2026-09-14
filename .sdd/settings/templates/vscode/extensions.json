@@ -1,0 +1,11 @@
+{
+  // Sugerido a quem abrir este repo no VS Code. Nada e instalado sozinho — o
+  // editor so oferece.
+  "recommendations": [
+    // O motor do SDD roda aqui dentro: mesmos /sdd:*, mesmos subagentes, com
+    // diff renderizado no editor em vez de patch em texto.
+    "anthropic.claude-code",
+    // spec-lint.py e approval-gate.py sao Python puro (3.7+, stdlib).
+    "ms-python.python"
+  ]
+}

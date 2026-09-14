@@ -1,0 +1,145 @@
+{
+  // Tarefas do SDD Kit. O linter de rastreabilidade fala com o painel Problems
+  // do editor em vez de ficar preso na conversa: erro de spec vira item
+  // clicavel que abre requirements.md/tasks.md na linha exata.
+  //
+  // Ctrl+Shift+B roda a tarefa padrao (lint de todas as specs).
+  //
+  // Interpretador: Windows usa `py` (launcher oficial do python.org, porque
+  // `python` na PATH costuma cair no stub da Microsoft Store, que nao executa);
+  // Linux/macOS usam `python3`. Se o seu projeto usa outro, troque em "command".
+  //
+  // O problemMatcher e repetido em cada tarefa de proposito: matcher nomeado
+  // (`$algo`) so existe se uma extensao o declarar — em tasks.json ele precisa
+  // ser inline. Se editar o formato de saida do spec-lint, ajuste os quatro.
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "SDD: lint (todas as specs)",
+      "type": "process",
+      "command": "python3",
+      "args": ["tools/spec-lint.py", "--all", "--format=vscode"],
+      "windows": { "command": "py" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "group": { "kind": "build", "isDefault": true },
+      "presentation": {
+        "reveal": "silent",
+        "revealProblems": "onProblem",
+        "clear": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "sdd",
+        "source": "spec-lint",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    },
+    {
+      "label": "SDD: lint (spec do arquivo aberto)",
+      "detail": "Valida a spec a que pertence o arquivo aberto no editor.",
+      "type": "process",
+      "command": "python3",
+      "args": ["tools/spec-lint.py", "--path", "${fileDirname}", "--format=vscode"],
+      "windows": { "command": "py" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": {
+        "reveal": "silent",
+        "revealProblems": "onProblem",
+        "clear": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "sdd",
+        "source": "spec-lint",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    },
+    {
+      "label": "SDD: lint + evals (--require-evals)",
+      "detail": "Exige suite de evals: requisito sem eval vira erro, nao aviso.",
+      "type": "process",
+      "command": "python3",
+      "args": ["tools/spec-lint.py", "--all", "--require-evals", "--format=vscode"],
+      "windows": { "command": "py" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": {
+        "reveal": "silent",
+        "revealProblems": "onProblem",
+        "clear": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "sdd",
+        "source": "spec-lint",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    },
+    {
+      "label": "SDD: lint (uma spec pelo nome)",
+      "type": "process",
+      "command": "python3",
+      "args": ["tools/spec-lint.py", "${input:sddSpec}", "--format=vscode"],
+      "windows": { "command": "py" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": {
+        "reveal": "always",
+        "clear": true,
+        "panel": "dedicated"
+      },
+      "problemMatcher": {
+        "owner": "sdd",
+        "source": "spec-lint",
+        "fileLocation": ["relative", "${workspaceFolder}"],
+        "pattern": {
+          "regexp": "^(.+):(\\d+):(\\d+):\\s+(error|warning):\\s+(.+)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    },
+    {
+      "label": "SDD: versao do kit instalada",
+      "detail": "Mostra .sdd/SDD_KIT_VERSION (e o relatorio do ultimo upgrade).",
+      "type": "shell",
+      "command": "cat .sdd/SDD_KIT_VERSION",
+      "windows": { "command": "Get-Content .sdd\\SDD_KIT_VERSION" },
+      "options": { "cwd": "${workspaceFolder}" },
+      "presentation": { "reveal": "always", "clear": true, "panel": "dedicated" },
+      "problemMatcher": []
+    }
+  ],
+  "inputs": [
+    {
+      "id": "sddSpec",
+      "type": "promptString",
+      "description": "Nome da spec (pasta em .sdd/specs/)"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+# Python
+__pycache__/
+*.pyc
+
+# Estado gerado pelo kit num projeto de destino — nunca pertence ao repositório do kit.
+# (Mantido aqui também como referência do que ignorar no seu projeto.)
+.sdd/backups/
+.sdd/.kit-manifest.json
+.sdd/UPGRADE.md
+.sdd/specs/*/approval-log.jsonl
+*.sdd-new
+
+# Configuração local do Claude Code (permissões por máquina)
+.claude/settings.local.json
+
+# Sistema operacional
+.DS_Store
+Thumbs.db

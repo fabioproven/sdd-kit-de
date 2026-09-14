@@ -1,0 +1,628 @@
+<title>SDD — Fluxo Spec-Driven Development</title>
+<style>
+  :root {
+    --paper:#F4F6F8; --surface:#FFFFFF; --surface-2:#FBFCFD;
+    --ink:#1A2230; --ink-soft:#57627A; --ink-faint:#8791A6;
+    --line:#DCE1EA; --line-strong:#C4CBD8;
+    --agent:#12798C; --agent-ink:#0C5A69; --agent-soft:#E3F0F2;
+    --human:#A66311; --human-ink:#8A5210; --human-soft:#F8EBD6; --human-line:#E4B876;
+    --shadow:0 1px 2px rgba(20,34,55,.06), 0 6px 20px rgba(20,34,55,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --paper:#10131A; --surface:#191E28; --surface-2:#151A23;
+      --ink:#ECEFF5; --ink-soft:#9DA8BF; --ink-faint:#6D7793;
+      --line:#2A3242; --line-strong:#374156;
+      --agent:#41B4C8; --agent-ink:#69C6D7; --agent-soft:#123137;
+      --human:#E0A24A; --human-ink:#EDB765; --human-soft:#322512; --human-line:#5C451C;
+      --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="light"] {
+    --paper:#F4F6F8; --surface:#FFFFFF; --surface-2:#FBFCFD;
+    --ink:#1A2230; --ink-soft:#57627A; --ink-faint:#8791A6;
+    --line:#DCE1EA; --line-strong:#C4CBD8;
+    --agent:#12798C; --agent-ink:#0C5A69; --agent-soft:#E3F0F2;
+    --human:#A66311; --human-ink:#8A5210; --human-soft:#F8EBD6; --human-line:#E4B876;
+    --shadow:0 1px 2px rgba(20,34,55,.06), 0 6px 20px rgba(20,34,55,.05);
+  }
+  :root[data-theme="dark"] {
+    --paper:#10131A; --surface:#191E28; --surface-2:#151A23;
+    --ink:#ECEFF5; --ink-soft:#9DA8BF; --ink-faint:#6D7793;
+    --line:#2A3242; --line-strong:#374156;
+    --agent:#41B4C8; --agent-ink:#69C6D7; --agent-soft:#123137;
+    --human:#E0A24A; --human-ink:#EDB765; --human-soft:#322512; --human-line:#5C451C;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:-apple-system,"Segoe UI",system-ui,Roboto,sans-serif;
+    font-size:16px; line-height:1.6; -webkit-font-smoothing:antialiased;
+  }
+  .wrap { max-width:940px; margin:0 auto; padding:clamp(20px,4vw,56px) clamp(16px,4vw,40px) 72px; }
+
+  .serif { font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif; }
+  .mono { font-family:ui-monospace,"SF Mono","Cascadia Code",Consolas,monospace; }
+
+  /* ---- header ---- */
+  header.hd { border-bottom:1px solid var(--line); padding-bottom:28px; margin-bottom:36px; }
+  .eyebrow {
+    font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:12px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--agent-ink); margin:0 0 14px;
+  }
+  h1 {
+    font-family:Georgia,"Iowan Old Style","Palatino Linotype",serif;
+    font-weight:600; font-size:clamp(30px,5.5vw,46px); line-height:1.08; letter-spacing:-.01em;
+    margin:0 0 16px; text-wrap:balance;
+  }
+  .thesis {
+    font-family:Georgia,"Iowan Old Style",serif; font-style:italic;
+    font-size:clamp(17px,2.4vw,21px); color:var(--ink-soft); margin:0; max-width:60ch; text-wrap:balance;
+  }
+  .thesis b { font-style:normal; font-weight:600; color:var(--ink); }
+
+  /* ---- legends ---- */
+  .legends { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin:28px 0 8px; }
+  @media (max-width:620px){ .legends{ grid-template-columns:1fr; } }
+  .legend {
+    background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px 16px; box-shadow:var(--shadow);
+  }
+  .legend h3 {
+    font-family:ui-monospace,Consolas,monospace; font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+    color:var(--ink-faint); margin:0 0 10px; font-weight:600;
+  }
+  .legend ul { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:7px; }
+  .legend li { display:flex; align-items:center; gap:9px; font-size:13.5px; color:var(--ink-soft); }
+  .swatch { width:14px; height:14px; border-radius:4px; flex:none; }
+  .sw-agent { background:var(--agent); }
+  .sw-human { background:var(--human); }
+  .dot { width:9px; height:9px; border-radius:50%; flex:none; }
+  .sw-prod { background:var(--agent); border-radius:2px; }
+  .sw-motor { background:transparent; border:1.5px solid var(--line-strong); border-radius:2px; }
+  .legend li b { color:var(--ink); font-weight:600; }
+
+  /* ---- flow spine ---- */
+  .flow { margin-top:38px; display:flex; flex-direction:column; gap:0; }
+  .stage {
+    position:relative; display:grid; grid-template-columns:132px 1fr; gap:18px;
+    padding:0 0 8px;
+  }
+  @media (max-width:620px){ .stage{ grid-template-columns:1fr; gap:0; } }
+  .rail { position:relative; padding-top:6px; }
+  .rail .num {
+    font-family:ui-monospace,Consolas,monospace; font-weight:700; font-size:13px;
+    color:var(--surface); background:var(--agent); width:30px; height:30px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center; box-shadow:var(--shadow);
+  }
+  .rail .phase {
+    font-family:ui-monospace,Consolas,monospace; font-size:10.5px; color:var(--ink-faint);
+    margin-top:8px; line-height:1.35; letter-spacing:.02em;
+  }
+  .rail .phase b { color:var(--agent-ink); font-weight:600; display:block; }
+  @media (max-width:620px){ .rail{ display:flex; align-items:center; gap:12px; padding:14px 0 6px; } .rail .phase{ margin-top:0; } }
+
+  .card {
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    padding:16px 18px; box-shadow:var(--shadow); margin-bottom:16px;
+  }
+  .card .cmd {
+    font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:13.5px; font-weight:600;
+    color:var(--agent-ink); background:var(--agent-soft); display:inline-block;
+    padding:3px 9px; border-radius:6px; margin:0 0 10px;
+  }
+  .card h2 {
+    font-family:Georgia,serif; font-weight:600; font-size:18px; margin:2px 0 8px; letter-spacing:-.005em;
+  }
+  .card p { margin:0 0 10px; font-size:14.5px; color:var(--ink-soft); }
+  .card p:last-child { margin-bottom:0; }
+  .born {
+    display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--ink);
+    background:var(--surface-2); border:1px solid var(--line); border-radius:7px; padding:5px 10px; margin:2px 6px 6px 0;
+  }
+  .born .file { font-family:ui-monospace,Consolas,monospace; font-weight:600; color:var(--agent-ink); font-size:12.5px; }
+  .born .tag { font-size:11px; color:var(--ink-faint); }
+
+  .ctx {
+    margin-top:12px; border-top:1px dashed var(--line-strong); padding-top:11px;
+    display:grid; grid-template-columns:1fr 1fr; gap:12px;
+  }
+  @media (max-width:520px){ .ctx{ grid-template-columns:1fr; gap:8px; } }
+  .ctx div { font-size:12.5px; line-height:1.5; }
+  .ctx .lbl {
+    font-family:ui-monospace,Consolas,monospace; font-size:10px; letter-spacing:.1em; text-transform:uppercase;
+    display:block; margin-bottom:3px; font-weight:600;
+  }
+  .ctx .in .lbl { color:var(--agent-ink); }
+  .ctx .out .lbl { color:var(--human-ink); }
+  .ctx code { font-family:ui-monospace,Consolas,monospace; font-size:11.5px; color:var(--ink); background:var(--surface-2); padding:1px 4px; border-radius:3px; }
+
+  .writer {
+    display:inline-block; font-family:ui-monospace,Consolas,monospace; font-size:10.5px; letter-spacing:.08em;
+    text-transform:uppercase; font-weight:600; padding:2px 8px; border-radius:20px; margin-bottom:10px;
+    background:var(--agent-soft); color:var(--agent-ink);
+  }
+
+  /* ---- gate ---- */
+  .gate {
+    display:grid; grid-template-columns:132px 1fr; gap:18px; margin:0 0 16px;
+  }
+  @media (max-width:620px){ .gate{ grid-template-columns:1fr; } }
+  .gate .gate-body {
+    background:var(--human-soft); border:1px solid var(--human-line); border-left:4px solid var(--human);
+    border-radius:10px; padding:11px 16px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  .gate .glabel {
+    font-family:ui-monospace,Consolas,monospace; font-size:10.5px; letter-spacing:.12em; text-transform:uppercase;
+    font-weight:700; color:var(--human-ink); flex:none;
+  }
+  .gate .gtext { font-size:13.5px; color:var(--ink); }
+  .gate .gtext b { color:var(--human-ink); }
+  .gate .bypass {
+    font-family:ui-monospace,Consolas,monospace; font-size:11.5px; color:var(--human-ink);
+    background:var(--surface); border:1px dashed var(--human-line); padding:2px 8px; border-radius:5px;
+  }
+  .gate.soft .gate-body { background:transparent; border-style:dashed; border-left-width:1px; border-left-style:dashed; }
+  .gate.soft .glabel { color:var(--ink-faint); }
+
+  .spacer-rail { grid-column:1; }
+
+  /* ---- section blocks ---- */
+  section.blk { margin-top:52px; }
+  .blk > .hdln {
+    font-family:Georgia,serif; font-weight:600; font-size:24px; margin:0 0 6px; letter-spacing:-.01em;
+  }
+  .blk > .sub { color:var(--ink-soft); font-size:14.5px; margin:0 0 20px; max-width:64ch; }
+
+  /* traceability */
+  .thread { display:flex; align-items:stretch; gap:0; flex-wrap:wrap; background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:18px; box-shadow:var(--shadow); }
+  .thread .node { flex:1 1 150px; min-width:140px; padding:4px 12px; position:relative; }
+  .thread .node:not(:last-child)::after {
+    content:"→"; position:absolute; right:-6px; top:50%; transform:translateY(-50%);
+    color:var(--agent); font-size:18px; font-weight:700;
+  }
+  @media (max-width:640px){ .thread .node:not(:last-child)::after{ content:"↓"; right:auto; left:16px; top:auto; bottom:-14px; transform:none; } .thread .node{ padding-bottom:20px; } }
+  .thread .where { font-family:ui-monospace,Consolas,monospace; font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--ink-faint); margin:0 0 6px; }
+  .thread .id { font-family:ui-monospace,Consolas,monospace; font-weight:700; color:var(--agent-ink); background:var(--agent-soft); padding:1px 6px; border-radius:4px; font-size:12px; }
+  .thread .desc { font-size:12.5px; color:var(--ink-soft); margin:7px 0 0; }
+
+  /* watch-outs */
+  .risks { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+  @media (max-width:620px){ .risks{ grid-template-columns:1fr; } }
+  .risk { background:var(--surface); border:1px solid var(--line); border-radius:11px; padding:15px 16px; box-shadow:var(--shadow); border-top:3px solid var(--human); }
+  .risk h4 { font-family:Georgia,serif; font-size:15.5px; margin:0 0 6px; font-weight:600; }
+  .risk p { margin:0; font-size:13.5px; color:var(--ink-soft); }
+  .risk .rk { font-family:ui-monospace,Consolas,monospace; font-size:11px; color:var(--human-ink); font-weight:700; }
+
+  /* questions */
+  .qa { display:flex; flex-direction:column; gap:12px; }
+  details.q {
+    background:var(--surface); border:1px solid var(--line); border-radius:11px; box-shadow:var(--shadow); overflow:hidden;
+  }
+  details.q summary {
+    cursor:pointer; list-style:none; padding:15px 18px; font-family:Georgia,serif; font-size:16px; font-weight:600;
+    display:flex; gap:12px; align-items:flex-start;
+  }
+  details.q summary::-webkit-details-marker { display:none; }
+  details.q summary .qn {
+    font-family:ui-monospace,Consolas,monospace; font-size:13px; color:var(--surface); background:var(--human);
+    width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; flex:none; font-weight:700;
+  }
+  details.q summary .arw { margin-left:auto; color:var(--ink-faint); transition:transform .2s ease; font-size:14px; flex:none; padding-top:3px; }
+  details.q[open] summary .arw { transform:rotate(90deg); }
+  details.q .ans { padding:0 18px 16px 56px; font-size:14px; color:var(--ink-soft); border-top:1px solid var(--line); margin-top:-1px; padding-top:14px; }
+  details.q .ans code { font-family:ui-monospace,Consolas,monospace; font-size:12.5px; background:var(--surface-2); padding:1px 5px; border-radius:4px; color:var(--ink); }
+  details.q .ans .you { display:block; font-size:12.5px; color:var(--agent-ink); font-family:ui-monospace,Consolas,monospace; margin-top:10px; }
+
+  a:focus-visible, summary:focus-visible { outline:2px solid var(--agent); outline-offset:2px; border-radius:4px; }
+
+  footer.ft { margin-top:56px; padding-top:24px; border-top:1px solid var(--line); }
+  footer.ft .core { font-family:Georgia,serif; font-size:clamp(17px,2.6vw,22px); line-height:1.5; color:var(--ink); text-wrap:balance; max-width:62ch; }
+  footer.ft .core b { color:var(--agent-ink); }
+  footer.ft .meta { font-family:ui-monospace,Consolas,monospace; font-size:11px; color:var(--ink-faint); margin-top:18px; letter-spacing:.03em; }
+
+  @media (prefers-reduced-motion:reduce){ * { transition:none !important; } }
+  @media print { body{ background:#fff; } .card,.legend,.risk,details.q,.thread{ box-shadow:none; } details.q{ } details.q .ans{ display:block; } }
+</style>
+
+<div class="wrap">
+
+  <header class="hd">
+    <p class="eyebrow">SDD Kit · Anatomia do fluxo</p>
+    <h1>Spec-Driven Development, estação por estação</h1>
+    <p class="thesis">Parece um fluxo de documentos. É, na verdade, uma <b>máquina de gestão de contexto</b>: cada etapa carrega só a sua fatia, grava o resultado em disco e passa o bastão. O disco é a memória de longo prazo; a janela do modelo é só memória de trabalho.</p>
+
+    <div class="legends">
+      <div class="legend">
+        <h3>Quem faz o quê</h3>
+        <ul>
+          <li><span class="swatch sw-agent"></span><b>Agente</b> — escreve todos os artefatos</li>
+          <li><span class="swatch sw-human"></span><b>Humano</b> — não escreve nada; é o portão que aprova</li>
+        </ul>
+      </div>
+      <div class="legend">
+        <h3>Dois tipos de arquivo</h3>
+        <ul>
+          <li><span class="swatch sw-prod"></span><b>Produto</b> — nasce por feature, em <span class="mono">.sdd/specs/&lt;TICKET&gt;/</span></li>
+          <li><span class="swatch sw-motor"></span><b>Motor</b> — fixo: comandos, rules, templates, steering, subagentes, hooks</li>
+        </ul>
+      </div>
+    </div>
+  </header>
+
+  <div class="flow">
+
+    <!-- STAGE 0 -->
+    <div class="stage">
+      <div class="rail"><div class="num">0</div><div class="phase">antes do SDD</div></div>
+      <div class="card">
+        <span class="writer">Agente · /align</span>
+        <span class="cmd">/align</span>
+        <h2>Da ideia fuzzy ao contrato</h2>
+        <p>O agente interroga como um <span class="mono">grilling</span> — uma pergunta por vez, cada uma com uma recomendação — até fechar um contrato executável. Lê o contrato de volta e espera o "sim".</p>
+        <span class="born">nasce <span class="file">investigation.md</span> <span class="tag">refinamento do ticket</span></span>
+        <div class="ctx">
+          <div class="in"><span class="lbl">Carrega</span> steering (já em memória); ticket via subagente <code>jira-operator</code></div>
+          <div class="out"><span class="lbl">Corta</span> o código-fonte — só via <code>code-explorer</code>, que devolve resumo condensado. <b>align PARA aqui.</b></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="spacer-rail"></div>
+      <div class="gate-body">
+        <span class="glabel">Portão humano</span>
+        <span class="gtext">O humano revisa <b>investigation.md</b> e decide iniciar o SDD. align nunca faz isso sozinho.</span>
+      </div>
+    </div>
+
+    <!-- STAGE 1 -->
+    <div class="stage">
+      <div class="rail"><div class="num">1</div><div class="phase"><b>initialized</b></div></div>
+      <div class="card">
+        <span class="writer">Agente</span>
+        <span class="cmd">/sdd:spec-init</span>
+        <h2>Andaime</h2>
+        <p>Cria a pasta da spec e os arquivos-semente a partir dos templates. Nenhuma aprovação: é só estrutura.</p>
+        <span class="born">nasce <span class="file">spec.json</span> <span class="tag">máquina de estado</span></span>
+        <span class="born">nasce <span class="file">requirements.md</span> <span class="tag">vazio</span></span>
+        <div class="ctx">
+          <div class="in"><span class="lbl">Carrega</span> steering inteiro + 2 templates</div>
+          <div class="out"><span class="lbl">Corta</span> <b>proibido</b> gerar requisitos/design/tasks aqui (separação estrita de fases)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STAGE 2 -->
+    <div class="stage">
+      <div class="rail"><div class="num">2</div><div class="phase"><b>requirements-generated</b></div></div>
+      <div class="card">
+        <span class="writer">Agente</span>
+        <span class="cmd">/sdd:spec-requirements</span>
+        <h2>O QUÊ — requisitos de negócio</h2>
+        <p>Critérios de aceite <b>testáveis e numerados</b> em EARS (<span class="mono">When / If / While / shall</span>). Foco no comportamento, sem nomes de arquivo ou classe.</p>
+        <span class="born">preenche <span class="file">requirements.md</span> <span class="tag">Req 1.1, 1.2, 2.1…</span></span>
+        <div class="ctx">
+          <div class="in"><span class="lbl">Carrega</span> requirements + steering + <code>ears-format.md</code> + template</div>
+          <div class="out"><span class="lbl">Corta</span> regras de design e de tasks — irrelevantes agora</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="spacer-rail"></div>
+      <div class="gate-body">
+        <span class="glabel">Portão · obrigatório</span>
+        <span class="gtext">Aprovar requisitos. Opcional: <span class="mono">/sdd:validate-gap</span> → <b>gap-analysis.md</b> (brownfield).</span>
+        <span class="bypass">-y auto-aprova</span>
+      </div>
+    </div>
+
+    <!-- STAGE 3 -->
+    <div class="stage">
+      <div class="rail"><div class="num">3</div><div class="phase"><b>design-generated</b></div></div>
+      <div class="card">
+        <span class="writer">Agente</span>
+        <span class="cmd">/sdd:spec-design</span>
+        <h2>O COMO — decisões técnicas</h2>
+        <p>Traduz cada requisito em arquitetura, componentes e contratos. A <b>tabela de rastreabilidade</b> (requisito → componente) é o que garante que nada ficou órfão. Discovery/pesquisa conforme a complexidade.</p>
+        <span class="born">nasce <span class="file">design.md</span></span>
+        <span class="born">nasce <span class="file">research.md</span> <span class="tag">log de decisões</span></span>
+        <div class="ctx">
+          <div class="in"><span class="lbl">Carrega</span> requirements + steering + <code>design-principles</code> + discovery</div>
+          <div class="out"><span class="lbl">Corta</span> regras de geração de tasks</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="spacer-rail"></div>
+      <div class="gate-body">
+        <span class="glabel">Portão · obrigatório</span>
+        <span class="gtext">Aprovar design. Opcional: <span class="mono">/sdd:validate-design</span>.</span>
+        <span class="bypass">-y auto-aprova</span>
+      </div>
+    </div>
+
+    <!-- STAGE 4 -->
+    <div class="stage">
+      <div class="rail"><div class="num">4</div><div class="phase"><b>tasks-generated</b><br>ready_for_impl</div></div>
+      <div class="card">
+        <span class="writer">Agente</span>
+        <span class="cmd">/sdd:spec-tasks</span>
+        <h2>O plano executável</h2>
+        <p>Quebra o design em tarefas de <b>1–3h</b>, máximo 2 níveis (1 → 1.1), em linguagem natural. A ordem é a dependência padrão; <span class="mono">(P)</span> marca o que pode rodar em paralelo; cada tarefa termina com <code>_Requirements: X.X_</code>.</p>
+        <span class="born">nasce <span class="file">tasks.md</span> <span class="tag">checkboxes</span></span>
+        <div class="ctx">
+          <div class="in"><span class="lbl">Carrega</span> req + design + steering + <code>tasks-generation</code> + <code>parallel-analysis</code></div>
+          <div class="out"><span class="lbl">Corta</span> regras de discovery e EARS — já cumpriram seu papel</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate">
+      <div class="spacer-rail"></div>
+      <div class="gate-body">
+        <span class="glabel">Portão · obrigatório</span>
+        <span class="gtext">Aprovar tarefas. E <b>limpar o contexto</b> antes de implementar — cada tarefa em sessão limpa.</span>
+        <span class="bypass">-y auto-aprova</span>
+      </div>
+    </div>
+
+    <!-- STAGE 5 -->
+    <div class="stage">
+      <div class="rail"><div class="num">5</div><div class="phase"><b>implemented</b></div></div>
+      <div class="card">
+        <span class="writer">Agente</span>
+        <span class="cmd">/sdd:spec-impl &lt;task&gt;</span>
+        <h2>Código verificado — via TDD</h2>
+        <p>Ciclo Kent Beck: <b>RED</b> (teste falha) → <b>GREEN</b> (código mínimo passa) → <b>REFACTOR</b> → <b>VERIFY</b> (sem regressão). Ao terminar, muda <span class="mono">- [ ]</span> para <span class="mono">- [x]</span>.</p>
+        <span class="born">nasce <span class="file">código + testes</span></span>
+        <div class="ctx">
+          <div class="in"><span class="lbl">Carrega</span> req + design + tasks + steering</div>
+          <div class="out"><span class="lbl">Corta</span> histórico entre tarefas — recomendado limpar a cada uma</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gate soft">
+      <div class="spacer-rail"></div>
+      <div class="gate-body">
+        <span class="glabel">Depois</span>
+        <span class="gtext">Opcional <span class="mono">/sdd:validate-impl</span> · então <span class="mono">/prepare-pr</span> → self-review → PR (fora do SDD stricto).</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- TRACEABILITY -->
+  <section class="blk">
+    <h2 class="hdln">O fio da rastreabilidade</h2>
+    <p class="sub">O mesmo ID de requisito viaja pelas três fases. É a espinha dorsal do SDD — e é verificada por convenção textual, não por ferramenta. Se o modelo esquecer um ID, ninguém pega automaticamente.</p>
+    <div class="thread">
+      <div class="node">
+        <p class="where">requirements.md</p>
+        <span class="id">Req 2.1</span>
+        <p class="desc">"…execute B-equivalent queries for each of the remaining 17 TDS entities."</p>
+      </div>
+      <div class="node">
+        <p class="where">design.md</p>
+        <span class="id">→ componente</span>
+        <p class="desc">Full Entity Sweep Process · <span class="mono">Req Coverage: 2.1–2.5</span></p>
+      </div>
+      <div class="node">
+        <p class="where">tasks.md</p>
+        <span class="id">→ tarefa 3.1</span>
+        <p class="desc"><span class="mono">_Requirements: 2.1, 2.2…_</span> no fim da tarefa</p>
+      </div>
+      <div class="node">
+        <p class="where">execução</p>
+        <span class="id">→ [x]</span>
+        <p class="desc">checkbox marcado quando os critérios daquele ID são satisfeitos</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- RISKS -->
+  <section class="blk">
+    <h2 class="hdln">Onde o fluxo é frágil</h2>
+    <p class="sub">Os cinco pontos que um time novo entende errado — ensine-os junto com o caminho feliz.</p>
+    <div class="risks">
+      <div class="risk">
+        <h4><span class="rk">01 ·</span> O portão é fingido</h4>
+        <p><span class="mono">-y</span> e <span class="mono">--auto</span> auto-aprovam tudo. O gate não é uma trava do sistema — é uma convenção que depende do humano <i>escolher</i> não pular.</p>
+      </div>
+      <div class="risk">
+        <h4><span class="rk">02 ·</span> Dependência vira prosa</h4>
+        <p>Gates condicionais ("faça X só depois de Y") não cabem em número nem em <span class="mono">(P)</span> — viram um bullet em texto que nada força a obedecer.</p>
+      </div>
+      <div class="risk">
+        <h4><span class="rk">03 ·</span> O motor assume código+TDD</h4>
+        <p>"TDD mandatório" não se aplica a uma investigação sem código. Aqui as tarefas viraram <span class="mono">[x]</span> sem nenhum teste — e nada detecta a divergência.</p>
+      </div>
+      <div class="risk">
+        <h4><span class="rk">04 ·</span> Rastreabilidade sem linter</h4>
+        <p>Os IDs <code>_Requirements:_</code> são a espinha, mas nada valida a cobertura exceto o próprio modelo se checando em prosa.</p>
+      </div>
+      <div class="risk">
+        <h4><span class="rk">05 ·</span> Limpar contexto é opcional</h4>
+        <p>A prática que faz o "context rot" não acontecer é recomendada, nunca forçada — e o comando mais óbvio (<span class="mono">spec-impl</span> rodando tudo) a contraria.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- QUESTIONS -->
+  <section class="blk">
+    <h2 class="hdln">Cinco perguntas que você deveria responder de cabeça</h2>
+    <p class="sub">Você acertou a #3 — "serve para economizar contexto". Certo no espírito; abaixo, a resposta afiada e as outras quatro, para você ensinar sem hesitar.</p>
+    <div class="qa">
+
+      <details class="q">
+        <summary><span class="qn">1</span><span>Onde vive o estado do fluxo, e o que acontece ao rodar <span class="mono">/sdd:spec-design</span> sem ter aprovado os requisitos?</span><span class="arw">▸</span></summary>
+        <div class="ans">O estado vive em <code>spec.json</code> — uma máquina de estado de 22 linhas com <code>phase</code> e um bloco <code>approvals.&lt;fase&gt;.generated/approved</code>. Cada comando, no Step 1, lê essas flags e <b>PARA</b> se a fase anterior não estiver aprovada. A flag <code>-y</code> é o atalho que auto-aprova a fase anterior e segue. O portão é social (o humano rodar o próximo comando), materializado num booleano.</div>
+      </details>
+
+      <details class="q">
+        <summary><span class="qn">2</span><span>Qual a diferença concreta entre o que pode aparecer em <span class="mono">requirements.md</span> e em <span class="mono">design.md</span>?</span><span class="arw">▸</span></summary>
+        <div class="ans"><code>requirements.md</code> = o <b>QUÊ</b>, testável, sem menção a implementação. <code>design.md</code> = o <b>COMO</b>: arquitetura, arquivos, contratos. Errado em requirements: "criar a classe <span class="mono">FullEntitySweepProcess</span>" (isso é solução). Errado em design: "o engenheiro quer confiar nos números" (isso é objetivo de negócio). Se você vê um nome de arquivo em requirements, o fluxo foi violado.</div>
+      </details>
+
+      <details class="q">
+        <summary><span class="qn">3</span><span>Por que subagentes devolvem resumo e nunca conteúdo raw — e o que se degrada se quebrarem a regra?</span><span class="arw">▸</span></summary>
+        <div class="ans">Sim, economiza contexto — mas o objetivo é combater o <b>context rot</b>: a qualidade do raciocínio do modelo cai conforme a janela cresce. O subagente lê 50 arquivos, o contexto "sujo" (dumps) fica na cabeça dele e <b>morre lá</b>; só a destilação sobe ao orquestrador. Quebrar a regra reenche a janela principal de lixo e degrada todas as decisões seguintes — o oposto do que o design inteiro existe para proteger.<span class="you">sua resposta: "serve para economizar" ✓ — o mecanismo. Falta: economizar contra o quê, e por quê.</span></div>
+      </details>
+
+      <details class="q">
+        <summary><span class="qn">4</span><span>O que a linha <span class="mono">_Requirements: 2.1, 2.3_</span> costura, e como o sistema (não) garante a costura?</span><span class="arw">▸</span></summary>
+        <div class="ans">Costura a tarefa de volta aos critérios de aceite específicos que ela satisfaz — fechando o fio requisito → design → tarefa → checkbox. O sistema <b>não</b> garante nada além de uma checagem em prosa ("todos os requisitos devem mapear"). Não há linter de spec: se o modelo alucinar um ID ou esquecer o requisito 4, a matriz de rastreabilidade fica só tão boa quanto a disciplina do modelo naquele turno.</div>
+      </details>
+
+      <details class="q">
+        <summary><span class="qn">5</span><span>Qual prática opcional, se ignorada, colapsa o argumento de "context rot" que justifica as fases separadas?</span><span class="arw">▸</span></summary>
+        <div class="ans"><b>Limpar o histórico entre cada tarefa de <span class="mono">spec-impl</span></b>. Todo o ganho das fases separadas depende de cada execução começar numa janela limpa, relendo os artefatos do disco. Mas isso é só recomendado — e o comando mais conveniente, <code>/sdd:spec-impl &lt;feature&gt;</code> (todas as tarefas de uma vez), faz exatamente o contrário e é o próprio arquivo que o chama de "NOT recommended due to context bloat".</div>
+      </details>
+
+    </div>
+  </section>
+
+  <!-- v0.4.0 — AUTO-APPROVAL -->
+  <section class="blk">
+    <h2 class="hdln">A evolução: modo aprovador automático <span class="mono" style="font-size:14px;color:var(--agent-ink);background:var(--agent-soft);padding:2px 8px;border-radius:6px;vertical-align:middle">v0.4.0</span></h2>
+    <p class="sub">Para cortar aprovações manuais sem perder segurança: <b>dois papéis separados</b>, risco classificado antes de executar, e uma trava de loop <b>determinística — fora do modelo</b>. Desligado por padrão; os portões humanos acima continuam sendo o fallback. É a resposta direta à fragilidade 01 — aqui o gate é uma trava de verdade, não convenção.</p>
+
+    <div class="risks">
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">low ·</span> automático</h4>
+        <p>Ler pastas, analisar estrutura, gerar documentação, query read-only. <b>Aprovação totalmente automática.</b></p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">medium ·</span> aprovador decide</h4>
+        <p>Novo modelo/tabela, nova transformação, testes. <b>O agente aprovador decide — tudo logado.</b></p>
+      </div>
+      <div class="risk">
+        <h4><span class="rk">high ·</span> sempre humano</h4>
+        <p>Schema, delete/overwrite, migração, push/deploy. <b>Aprovação humana, sem exceção</b> — o gate força.</p>
+      </div>
+    </div>
+
+    <div class="thread" style="margin-top:16px">
+      <div class="node">
+        <p class="where">1 · classifica</p><span class="id">risco</span>
+        <p class="desc">pelo <i>pior</i> que a subtarefa pode fazer</p>
+      </div>
+      <div class="node">
+        <p class="where">2 · gate</p><span class="id" style="color:var(--human-ink);background:var(--human-soft)">approval-gate.py</span>
+        <p class="desc">determinístico: HUMAN / ESCALATE / CONTINUE por <i>exit code</i></p>
+      </div>
+      <div class="node">
+        <p class="where">3 · executor</p><span class="id">aplica</span>
+        <p class="desc">resultado + critérios de saída verificáveis</p>
+      </div>
+      <div class="node">
+        <p class="where">4 · aprovador</p><span class="id">julga</span>
+        <p class="desc">APPROVE / REJECT (feedback) / ESCALATE — sem acesso de escrita</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <p style="margin:0"><b>Por que loop infinito é impossível:</b> o cap de iterações é contado num <span class="mono">ledger</span> em disco e verificado pelo <span class="mono">approval-gate.py</span> — não pela contagem do modelo. Ao atingir o teto de rodadas sem convergir (default 5) ou o teto de custo, o gate retorna <span class="mono">ESCALATE</span> e a subtarefa vai pro humano. <b>REJECT</b> devolve o feedback ao executor e repete; <b>high nunca entra no loop</b>. Cada decisão — quem decidiu, iteração, risco, tokens, custo — vai pro log <span class="mono">approval-log.jsonl</span>.</p>
+    </div>
+  </section>
+
+  <!-- v0.6.0 — AGENT-READY DATA -->
+  <section class="blk">
+    <h2 class="hdln">O outro eixo: correção, não só estrutura <span class="mono" style="font-size:14px;color:var(--agent-ink);background:var(--agent-soft);padding:2px 8px;border-radius:6px;vertical-align:middle">v0.6.0</span></h2>
+    <p class="sub">O <span class="mono">spec-lint</span> garante que a spec é <b>rastreável</b>. Não diz nada sobre a resposta estar <b>certa</b> — e é aí que agente de dados falha em silêncio. Três peças, todas inertes em projeto sem plataforma de dados.</p>
+
+    <div class="risks">
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">semântica ·</span> o significado</h4>
+        <p><span class="mono">SUM(valor)</span> não é métrica. Contrato = nome + fórmula + <b>grain</b> + população + dono. Métrica sem contrato <b>não se inventa</b>: propõe, confirma, escreve no steering.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">evals ·</span> a medição</h4>
+        <p>10–20 golden questions com ground truth <b>humano</b> — incluindo uma ambígua cuja resposta certa é <i>perguntar</i>. Ground truth do próprio agente mede consistência, não correção.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">proveniência ·</span> a confiança</h4>
+        <p>Todo número sai com fonte, métrica, freshness, validação e confiança. <b>Número sem fonte é chute com formatação.</b></p>
+      </div>
+    </div>
+
+    <div class="thread" style="margin-top:16px">
+      <div class="node">
+        <p class="where">1 · semantic layer</p><span class="id">contrato</span>
+        <p class="desc">métrica definida, grain explícito</p>
+      </div>
+      <div class="node">
+        <p class="where">2 · modelo governado</p><span class="id">canônico</span>
+        <p class="desc">dataset que o time possui e testa</p>
+      </div>
+      <div class="node">
+        <p class="where">3 · SQL manual</p><span class="id">silver</span>
+        <p class="desc">dado governado, agregação não</p>
+      </div>
+      <div class="node">
+        <p class="where">4 · raw</p><span class="id" style="color:var(--human-ink);background:var(--human-soft)">último recurso</span>
+        <p class="desc">permitido — mas nunca em silêncio</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <p style="margin:0"><b>A escada de fontes:</b> resolve-se de cima para baixo, parando no primeiro degrau que cobre a pergunta. Descer é permitido; <b>descer em silêncio não é</b> — diz-se qual degrau se usou e por que o de cima não bastou. Fonte ambígua (<span class="mono">orders</span>, <span class="mono">orders_v2</span>, <span class="mono">orders_final</span>) é <i>finding</i>, não detalhe: nomeia-se os candidatos e o humano decide.</p>
+    </div>
+  </section>
+
+  <!-- v0.7.0 — O KIT NO EDITOR, E UPGRADE COM MEMORIA -->
+  <section class="blk">
+    <h2 class="hdln">Onde a trava aparece, e o que sobrevive ao upgrade <span class="mono" style="font-size:14px;color:var(--agent-ink);background:var(--agent-soft);padding:2px 8px;border-radius:6px;vertical-align:middle">v0.7.0</span></h2>
+    <p class="sub">Duas lacunas de <b>operação</b>. A trava determinística vivia dentro da conversa — quem não pedisse <span class="mono">/sdd:spec-lint</span> não via o erro. E reinstalar o motor era escrita cega, sem memória do que a versão anterior tinha posto lá nem do que o destino tinha editado à mão.</p>
+
+    <div class="risks">
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">editor ·</span> a trava fica visível</h4>
+        <p><span class="mono">spec-lint --format=vscode</span> emite <span class="mono">arquivo:linha:coluna</span> por achado. <b>Ctrl+Shift+B</b> e cada erro de rastreabilidade vira item clicável no painel <i>Problems</i> — abre no critério de aceite exato.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">upgrade ·</span> decidido por hash</h4>
+        <p>Manifesto com sha256 de cada arquivo de motor. Bate com o manifesto = intocado, recebe a versão nova. Não bate = <b>editado no destino</b>: sua versão volta, a do kit fica como <span class="mono">.sdd-new</span>.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">contexto ·</span> o que a camada 2 deve</h4>
+        <p><span class="mono">.sdd/UPGRADE.md</span> lista o steering ausente, o <span class="mono">CLAUDE.md</span> ainda em postura pré-0.5.0, a spec sem evals — cada um com o comando que o gera.</p>
+      </div>
+    </div>
+
+    <div class="thread" style="margin-top:16px">
+      <div class="node">
+        <p class="where">1 · preflight</p><span class="id">backup</span>
+        <p class="desc">tudo que o motor pode tocar, antes de copiar</p>
+      </div>
+      <div class="node">
+        <p class="where">2 · cópia</p><span class="id">camada 1</span>
+        <p class="desc">o motor novo entra por cima</p>
+      </div>
+      <div class="node">
+        <p class="where">3 · finish</p><span class="id">diff por hash</span>
+        <p class="desc">edição local restaurada do backup</p>
+      </div>
+      <div class="node">
+        <p class="where">4 · relatório</p><span class="id" style="color:var(--human-ink);background:var(--human-soft)">leitura humana</span>
+        <p class="desc">o que revisar e o que ainda falta gerar</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <p style="margin:0"><b>O que nunca é tocado:</b> <span class="mono">.sdd/steering/</span>, <span class="mono">.sdd/specs/</span> e <span class="mono">CLAUDE.md</span> são <b>gerados do projeto</b>, não copiados do kit — nenhuma instalação os sobrescreve, e o backup existe para provar isso por hash. Arquivo que sumiu do motor novo é <b>listado, nunca apagado</b>: remoção é irreversível, logo é decisão humana — a mesma regra dos portões de risco.</p>
+    </div>
+  </section>
+
+  <footer class="ft">
+    <p class="core">O ciclo, em uma frase: <b>escreva o QUÊ testável → aprove → derive o COMO rastreável → aprove → quebre em tarefas verificáveis → aprove → execute marcando o que terminou.</b> Tudo o mais — steering, subagentes, hooks, aprovador automático — é a camada que faz isso não colapsar num repo grande.</p>
+    <p class="meta">Fluxo SDD portável (SDD Kit v0.7.0) · o exemplo que ancora as estações é uma spec de investigação, por isso o passo 5 produz um relatório, não código. Modo aprovador automático desligado por padrão — os portões humanos são o fallback.</p>
+    <p class="meta">Desenvolvido por <b>Fabio Provençale</b> · <a href="mailto:fabio.provencale@gmail.com">fabio.provencale@gmail.com</a> · <a href="https://www.linkedin.com/in/fabio-provencale/" rel="noopener">LinkedIn</a> · Licença MIT.</p>
+  </footer>
+
+</div>

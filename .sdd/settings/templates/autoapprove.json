@@ -1,0 +1,16 @@
+{
+  "_comment": "Config do modo aprovador automatico. Copiado por install para .sdd/autoapprove.json (editavel). Lido por tools/approval-gate.py e pelo comando /sdd:spec-impl-auto. Default = DESLIGADO: o kit se comporta exatamente como antes (aprovacao manual em cada etapa).",
+  "auto_approve": {
+    "enabled": false,
+    "low": true,
+    "medium": true,
+    "high": false,
+    "_note_high": "high e SEMPRE aprovacao humana. O gate ignora 'high': true por seguranca."
+  },
+  "limits": {
+    "max_iterations": 5,
+    "max_tokens_per_task": 100000,
+    "max_usd_per_task": 1.00,
+    "_note_limits": "max_iterations e a trava dura contra loop infinito (contada no ledger). tokens/custo sao best-effort sobre valores registrados."
+  }
+}

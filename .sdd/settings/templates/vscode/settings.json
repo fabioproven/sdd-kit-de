@@ -1,0 +1,31 @@
+{
+  // Ajustes de editor do SDD Kit. Tudo aqui e conveniencia de leitura das
+  // specs — nada muda o comportamento do motor.
+
+  // Agrupa os arquivos de uma spec sob requirements.md no explorador: a spec
+  // vira UM item que abre, em vez de cinco arquivos soltos.
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.expand": false,
+  "explorer.fileNesting.patterns": {
+    "requirements.md": "design.md, tasks.md, evals.md, research.md, spec.json"
+  },
+
+  // Specs e steering sao texto corrido: quebra de linha ligada so no markdown.
+  "[markdown]": {
+    "editor.wordWrap": "on",
+    "editor.quickSuggestions": { "comments": false, "strings": false, "other": false }
+  },
+
+  // O motor do kit e dependencia, nao codigo do projeto: fora da busca por
+  // padrao (Ctrl+Shift+F). As specs e o steering continuam pesquisaveis.
+  "search.exclude": {
+    "**/.sdd/settings/**": true,
+    "**/.sdd/backups/**": true
+  },
+
+  // O ledger do aprovador automatico e append-only e cresce: nao vigie.
+  "files.watcherExclude": {
+    "**/.sdd/approval-log.jsonl": true,
+    "**/.sdd/backups/**": true
+  }
+}
