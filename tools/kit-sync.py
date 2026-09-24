@@ -149,17 +149,32 @@ def kit_history(kit_dir):
     return data.get("versions") or {}
 
 
-def kit_history_paths(kit_dir):
-    """União dos caminhos de motor que TODA versão anterior do kit publicou.
+def kit_history_paths(kit_dir, up_to=None, before=None):
+    """União dos caminhos de motor que as versões ANTERIORES do kit publicaram.
 
     Serve para a primeira instalação com manifesto: um arquivo que já existia
-    no destino e que nenhuma versão do kit jamais publicou não pode ser motor
-    editado — é obra do projeto com o mesmo nome. Sem isso, o kit ao começar a
-    publicar `agents/data-analyst.md` sobrescreveria o `data-analyst.md` que o
-    projeto escreveu à mão. Vazio se o arquivo não existir (comportamento antigo).
+    no destino e que nenhuma versão que o destino PODE ter tido publicou não é
+    motor editado — é obra do projeto com o mesmo nome. Sem isso, o kit ao
+    começar a publicar `agents/data-analyst.md` sobrescreveria o
+    `data-analyst.md` que o projeto escreveu à mão.
+
+    `up_to`  = versão que estava instalada (marcador .sdd/SDD_KIT_VERSION):
+               conta só versões <= ela.
+    `before` = versão que está sendo instalada: conta só versões < ela.
+    (0.9.1) Até a 0.9.0 a união incluía a própria versão nova — logo todo
+    arquivo publicado hoje contava como "já publicado" e a colisão nunca era
+    reconhecida na primeira instalação com manifesto. Vazio se o histórico não
+    existir (comportamento antigo).
     """
     paths = set()
-    for _version, rels in kit_history(kit_dir).items():
+    lim_le = _ver_tuple(up_to) if up_to else None
+    lim_lt = _ver_tuple(before) if before else None
+    for version, rels in kit_history(kit_dir).items():
+        v = _ver_tuple(version)
+        if lim_le is not None and v > lim_le:
+            continue
+        if lim_le is None and lim_lt is not None and v >= lim_lt:
+            continue
         paths.update(rels or [])
     return frozenset(paths)
 
@@ -252,7 +267,9 @@ def cmd_finish(args):
 
     rels = engine_files(kit)
     preserved, first_time = [], (not prev_manifest)
-    ever_shipped = kit_history_paths(kit)
+    # So versoes que o destino pode ter tido: ate a que estava instalada, ou,
+    # sem marcador, tudo que e anterior a versao que esta entrando agora.
+    ever_shipped = kit_history_paths(kit, up_to=prev_version, before=version)
 
     if backup:
         for rel in rels:

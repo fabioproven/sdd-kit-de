@@ -200,5 +200,47 @@ class AuditTests(unittest.TestCase):
         self.assertIn("| Gravidade |", txt2)
 
 
+class FinishCollisionTests(unittest.TestCase):
+    """0.9.1: destino antigo (sem manifesto) com arquivo proprio cujo nome o kit
+    passou a publicar depois — tem de ser preservado, kit ao lado como .sdd-new."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp(prefix="kit-sync-collision-")
+
+    def tearDown(self):
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _install(self, prev_marker):
+        t = os.path.join(self.tmp, "t")
+        _w(os.path.join(t, ".claude", "agents", "data-analyst.md"),
+           "---\nname: data-analyst\n---\nPROJECT\n")
+        if prev_marker:
+            _w(os.path.join(t, ".sdd", "SDD_KIT_VERSION"), prev_marker + "\n")
+        r = _run("preflight", "--kit", KIT, "--target", t)
+        backup = r.stdout.strip().splitlines()[-1]
+        # simula a copia do instalador (so o arquivo em questao)
+        shutil.copy(os.path.join(KIT, ".claude", "agents", "data-analyst.md"),
+                    os.path.join(t, ".claude", "agents", "data-analyst.md"))
+        _run("finish", "--kit", KIT, "--target", t, "--backup", backup)
+        body = open(os.path.join(t, ".claude", "agents", "data-analyst.md"), encoding="utf-8").read()
+        return t, body
+
+    def test_project_agent_preserved_when_marker_says_old_version(self):
+        t, body = self._install("sdd-kit 0.4.0")
+        self.assertIn("PROJECT", body)
+        self.assertTrue(os.path.exists(os.path.join(t, ".claude", "agents", "data-analyst.md.sdd-new")))
+
+    def test_project_agent_preserved_without_any_marker(self):
+        t, body = self._install(None)
+        self.assertIn("PROJECT", body)
+
+    def test_history_paths_bounds(self):
+        allp = ks.kit_history_paths(KIT)
+        self.assertIn(".claude/agents/data-engineer.md", allp)
+        self.assertNotIn(".claude/agents/data-analyst.md", ks.kit_history_paths(KIT, up_to="sdd-kit 0.4.0"))
+        self.assertIn(".claude/agents/data-analyst.md", ks.kit_history_paths(KIT, up_to="sdd-kit 0.8.0"))
+        self.assertNotIn(".claude/agents/data-engineer.md", ks.kit_history_paths(KIT, before="sdd-kit 0.9.0"))
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

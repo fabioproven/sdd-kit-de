@@ -3,6 +3,20 @@
 Formato: mais recente primeiro. O "motor" (`.claude/commands`, `.sdd/settings`, `tools/`) é a
 camada versionada; reinstalar uma versão nova não toca no seu `.sdd/steering/` nem nas suas specs.
 
+## 0.9.1 — Colisão por nome reconhecida também na primeira instalação com manifesto
+
+Correção sem mudança de comportamento pretendido. A preservação por colisão de nome (0.8.0) —
+"arquivo que o kit passa a publicar, mas o projeto já tinha com o mesmo nome, é obra do projeto" —
+**não disparava** numa instalação sem manifesto anterior (todo destino ≤ 0.6.0): a lista de
+"caminhos já publicados" somava todas as versões do `kit-history.json`, inclusive a que estava
+entrando, então todo arquivo publicado hoje contava como "já publicado" e o `data-analyst.md`
+escrito à mão num projeto 0.4.0 seria sobrescrito (o backup existia, a promessa não).
+
+- **`tools/kit-sync.py`**: `kit_history_paths()` passa a considerar só as versões que o destino
+  **pode ter tido** — até a do marcador `.sdd/SDD_KIT_VERSION` quando ele existe; sem marcador,
+  tudo que é anterior à versão que está sendo instalada. Testes de regressão em `tools/tests/`
+  (destino 0.4.0 com agente próprio → preservado, kit ao lado como `.sdd-new`).
+
 ## 0.9.0 — Quem constrói, e como atualizar sem refazer
 
 Dois problemas de origens diferentes, uma versão. O primeiro: até a 0.8.0 todo subagente do kit

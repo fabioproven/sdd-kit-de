@@ -468,7 +468,12 @@ de licença deles e a lista do que é original deste kit estão em `THIRD_PARTY_
 
 ---
 
-*SDD Kit 0.9.0 — adapte à vontade. Comece pelo `setup-sdd`; para atualizar, `/update-sdd`.*
+*SDD Kit 0.9.1 — adapte à vontade. Comece pelo `setup-sdd`; para atualizar, `/update-sdd`.*
+
+### Novidades da 0.9.1
+- **Correção no `kit-sync`**: a preservação por colisão de nome agora vale também na primeira
+  instalação com manifesto (destino ≤ 0.6.0) — um `data-analyst.md` escrito à mão num projeto 0.4.0
+  sobrevive à instalação da 0.9.x, com a versão do kit ao lado como `.sdd-new`.
 
 ### Novidades da 0.9.0
 - **`data-engineer`** — o primeiro agente do kit que **constrói**: executor delegado do `spec-impl` /
