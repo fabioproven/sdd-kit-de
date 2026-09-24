@@ -69,6 +69,8 @@ $required = @(
     '.claude\commands\sdd',
     '.claude\commands\prepare-pr.md',
     '.claude\agents\code-explorer.md',
+    '.claude\agents\data-engineer.md',
+    '.claude\commands\update-sdd.md',
     '.claude\agents\data-analyst.md',
     '.claude\agents\report-validator.md',
     '.claude\skills\setup-sdd\SKILL.md',
@@ -162,7 +164,7 @@ Copy-Item -Path (Join-Path $KitDir '.sdd\settings\*') `
           -Destination (Join-Path $TargetDir '.sdd\settings') -Recurse -Force
 
 Copy-Item -Path (Join-Path $KitDir 'tools\*.py') `
-          -Destination (Join-Path $TargetDir 'tools') -Force   # spec-lint.py + approval-gate.py
+          -Destination (Join-Path $TargetDir 'tools') -Force   # so os .py da raiz de tools (tests/ nao vai)
 
 if (Test-Path -LiteralPath $versionFile) {
     Copy-Item -LiteralPath $versionFile `
@@ -211,10 +213,12 @@ foreach ($f in @('.sdd\steering\.gitkeep', '.sdd\specs\.gitkeep')) {
 $templateSrc = Join-Path $KitDir 'CLAUDE.md.template'
 $claudeMd    = Join-Path $TargetDir 'CLAUDE.md'
 
+# O template SEMPRE fica ao lado: e a fonte de que o audit (kit-sync.py audit)
+# e o /update-sdd derivam as secoes que o CLAUDE.md do projeto ainda nao tem.
+Copy-Item -LiteralPath $templateSrc `
+          -Destination (Join-Path $TargetDir 'CLAUDE.md.template') -Force
 if (Test-Path -LiteralPath $claudeMd) {
-    Copy-Item -LiteralPath $templateSrc `
-              -Destination (Join-Path $TargetDir 'CLAUDE.md.template') -Force
-    Write-Host "    CLAUDE.md ja existe - template copiado ao lado como CLAUDE.md.template"
+    Write-Host "    CLAUDE.md ja existe - intocado; template atualizado ao lado (CLAUDE.md.template)"
 } else {
     Copy-Item -LiteralPath $templateSrc -Destination $claudeMd -Force
     Write-Host "    CLAUDE.md criado a partir do template (edite os {{PLACEHOLDERS}})"
@@ -267,6 +271,10 @@ $nextSteps = @'
     No editor: Ctrl+Shift+B roda o lint das specs no painel Problems.
 
     Proximos passos (no agente, dentro do projeto):
+
+    ATUALIZACAO de uma versao anterior?  rode  /update-sdd
+       (fecha so o que a camada 2 deve ao motor novo; --dry-run so mostra o plano)
+    PRIMEIRA instalacao?  siga abaixo:
 
     1. rode a skill  setup-sdd        (bootstrap guiado - recomendado)
     2. edite CLAUDE.md                (troque os {{PLACEHOLDERS}})

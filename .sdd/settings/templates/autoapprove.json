@@ -1,5 +1,5 @@
 {
-  "_comment": "Config do modo aprovador automatico. Copiado por install para .sdd/autoapprove.json (editavel). Lido por tools/approval-gate.py e pelo comando /sdd:spec-impl-auto. Default = DESLIGADO: o kit se comporta exatamente como antes (aprovacao manual em cada etapa).",
+  "_comment": "Config do modo aprovador automatico E da delegacao de execucao. Copiado por install para .sdd/autoapprove.json (editavel, nunca sobrescrito). Lido por tools/approval-gate.py e por todo /sdd:spec-impl* (o spec-impl-auto e so alias). Default = DESLIGADO nos dois blocos: o kit se comporta exatamente como antes (aprovacao manual, o orquestrador executa).",
   "auto_approve": {
     "enabled": false,
     "low": true,
@@ -10,7 +10,15 @@
   "limits": {
     "max_iterations": 5,
     "max_tokens_per_task": 100000,
-    "max_usd_per_task": 1.00,
+    "max_usd_per_task": 1.0,
     "_note_limits": "max_iterations e a trava dura contra loop infinito (contada no ledger). tokens/custo sao best-effort sobre valores registrados."
+  },
+  "delegation": {
+    "enabled": false,
+    "executor": "data-engineer",
+    "low": false,
+    "medium": true,
+    "high": true,
+    "_note": "Quem DIGITA uma subtarefa, nunca quem APROVA. enabled=false (default) = o orquestrador executa, exatamente como na 0.8.0. As flags por nivel dizem quais riscos vao para o agente executor (Work Order -> Work Report); 'high' aqui significa 'depois que o humano aprovou'. O gate continua forcando HUMAN para high independente deste bloco. Se o agente nomeado nao estiver instalado em .claude/agents/, o comando avisa e executa inline."
   }
 }

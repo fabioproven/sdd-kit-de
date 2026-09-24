@@ -67,6 +67,11 @@ Chat in the user's language. **Artifacts (code, comments, commits, specs, steeri
 - **Any report, dossier, or analysis before it circulates** → delegate to the `report-validator`
   subagent with the artifact's path. It reproduces every number at the source and hunts labels
   broader than the evidence, mixed axes, and stale figures. It judges; it does not edit.
+- **Implementation subtasks, when `delegation` is on in `.sdd/autoapprove.json`** → the
+  `data-engineer` subagent executes each Work Order (one subtask: exit criteria, risk, write scope,
+  design pointers) inside the write scope and returns a Work Report; the orchestrator — or the
+  `approver`, when the loop is on — judges it. It never marks tasks or approves. Inert while
+  delegation is off: the orchestrator executes, exactly as before.
 - Instruct every subagent to return a **condensed summary**, never raw file/content dumps —
   that is the whole reason they exist.
 {{OPTIONAL_PERSONA_ROUTING}}
@@ -93,7 +98,9 @@ an **executor <-> approver** loop, gated by risk — there is no separate comman
 Guardrails are enforced by `tools/approval-gate.py` (deterministic, not by the model): max iterations
 per subtask (loops can't run forever), a token/cost ceiling, and a full decision log at
 `.sdd/specs/<feature>/approval-log.jsonl` — if a spec has checked tasks and no ledger, the loop did
-not run for it. `enabled: false` = the manual behavior, no ledger. This project:
+not run for it. `enabled: false` = the manual behavior, no ledger. The `delegation` block in the same
+file decides **who executes** a subtask (the orchestrator, or the `data-engineer` agent per risk
+level); it never changes who approves. This project:
 **{{AUTO_APPROVE_POLICY}}**.
 <!-- Recommended balanced default: "auto for low + medium (logged); high always human." -->
 <!-- Conservative alternative: "auto for low only; medium+high stay human." -->
@@ -142,6 +149,7 @@ This project requires evals for: **{{EVAL_SCOPE}}**.
 | `/sdd:spec-init` → `spec-requirements` → `spec-design` → `spec-tasks` → `spec-impl` | the full flow |
 | `/sdd:spec-quick "desc" [--spec-only] [--auto]` | run the phases in one command |
 | `/sdd:spec-impl-auto <feature> [tasks]` | alias — the same risk-gated loop `spec-impl*` already runs when `autoapprove.json` is enabled |
+| `/update-sdd [--dry-run]` | after upgrading the engine: close only what the project layer owes the new version (audit-driven, additive, never overwrites) |
 | `python tools/write-guard.py --self-test` | prove the write-scope hook denies/allows what you think it does |
 | `/sdd:spec-lint <feature>` | validate traceability (`--require-evals` to also demand an eval suite) |
 | `/sdd:spec-evals <feature> [--run]` | golden questions + regression assertions; measure correctness |

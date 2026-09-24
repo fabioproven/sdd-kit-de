@@ -23,8 +23,16 @@ Execute implementation tasks for feature **$1** using Test-Driven Development.
 
 ### Step 0: Approval posture — read the config, don't ask
 
-Read `.sdd/autoapprove.json` (missing or invalid → treat as `enabled: false`). Say which mode you
-are in, in one line, before touching anything.
+Read `.sdd/autoapprove.json` (missing or invalid → treat as `enabled: false` for **both** blocks).
+Say which mode you are in, in one line, before touching anything:
+`mode: manual|loop · executor: self|<agent>(low:no medium:yes high:yes)`.
+
+**Executor — `delegation` block (0.9.0).** `delegation.enabled: true` names an agent
+(`delegation.executor`, default `data-engineer`) that **executes** subtasks at the risk levels whose
+flag is `true`; the orchestrator executes the others itself. It decides who *types*, never who
+*approves*. Absent, invalid or `enabled: false` → executor is **self**, identical to 0.8.0. If the
+named agent has no file in `.claude/agents/`, say `executor <name> not installed — executing inline`
+and treat as self. Rules: `.sdd/settings/rules/orchestration-loop.md` → "Delegation".
 
 - **`auto_approve.enabled: true` → run the executor↔approver loop from here.** Follow
   `.sdd/settings/rules/orchestration-loop.md` for every task selected in Step 2: decompose into
@@ -81,6 +89,18 @@ For each selected task, follow Kent Beck's TDD cycle:
    - All tests pass (new and existing)
    - No regressions in existing functionality
    - Code coverage maintained or improved
+
+**If the subtask is delegated** (its risk level is enabled in `delegation`): do **not** run the
+cycle above yourself. Build the **Work Order** (shape in `orchestration-loop.md`: subtask id,
+`_Requirements_` IDs, pass/fail exit criteria, risk + worst action, write scope from
+`.sdd/write-scope.json`, permitted paths, the `design.md` sections it must honor, profile
+`spec-impl`, feedback from the previous round if any) and call the executor agent with the Task
+tool. Its **Work Report** is the round's result. With the loop on, hand the report and the criteria
+to the `approver`; with the loop off, verify **each** exit criterion yourself against the report's
+evidence (open the paths, run the test command) before step 5. A report with `Stopped early: yes`
+is handed to the human with its reason — never retried silently. Step 5 below, `spec.json` and
+`evidence/` bookkeeping stay **yours**; the executor never marks anything. A `high` subtask reaches
+the executor only after the human approved it (and only if `delegation.high` is true).
 
 5. **MARK COMPLETE**:
    - Update checkbox from `- [ ]` to `- [x]` in tasks.md

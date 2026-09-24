@@ -14,6 +14,13 @@ Check that these exist; if any is missing, tell the user to re-run `install.sh` 
 - `.sdd/settings/rules/` and `.sdd/settings/templates/`
 - `tools/spec-lint.py`
 
+## 0.5 Is this an upgrade, not a first install?
+If `CLAUDE.md` exists **without** `{{PLACEHOLDERS}}` **and** `.sdd/steering/product.md` exists, the
+project layer is already there. Say: _"This project already has its layer 2. Run `/update-sdd` —
+it closes only what the upgrade audit found (`.sdd/UPGRADE.md`), without redoing the setup or
+overwriting anything. Continue with `setup-sdd` only if you want to start over."_ and **stop**
+unless the user explicitly chooses to continue.
+
 ## 1. Detect the stack (don't ask what you can read)
 Glob/read the obvious signals — `package.json`, `pyproject.toml`, `go.mod`, `Cargo.toml`,
 `pom.xml`, CI configs, top-level folders. Form a hypothesis about language, framework, and
@@ -123,6 +130,13 @@ Based on step 1, propose — don't impose — a short list:
   only runs where hooks run — inside a hosted notebook/workspace it does not exist, and there the
   scope is convention. Put that sentence in `CLAUDE.md` ("Where you are running").
 - Any other `PreToolUse` hook for an obvious "never write here" (production config, protected branch, secret files).
+- **Delegated executor** (`delegation` in `.sdd/autoapprove.json`, ships **off**): offer to turn it
+  on so implementation subtasks are executed by the `data-engineer` agent — a Work Order in, a
+  Work Report out, bounded by the write scope, judged by the orchestrator or the `approver`.
+  Recommended posture: `enabled: true`, `medium: true`, `high: true` (executes only after the
+  human approved), `low: false` (inline is cheaper). Say plainly what it changes: **who types a
+  subtask, never who approves it** — the gate still forces a human on `high`. The proof it ran is
+  `executor=data-engineer` in `approval-log.jsonl` (loop on) or a Work Report in the transcript.
 - **Routing to the data agents** (`CLAUDE.md` → Routing): if there is a data platform, keep the
   `data-analyst` line (queries go through it: read-only, sampling ladder, no dumps) and the
   `report-validator` line (any report is audited before it circulates). Make sure

@@ -3,6 +3,62 @@
 Formato: mais recente primeiro. O "motor" (`.claude/commands`, `.sdd/settings`, `tools/`) é a
 camada versionada; reinstalar uma versão nova não toca no seu `.sdd/steering/` nem nas suas specs.
 
+## 0.9.0 — Quem constrói, e como atualizar sem refazer
+
+Dois problemas de origens diferentes, uma versão. O primeiro: até a 0.8.0 todo subagente do kit
+**lê ou julga** (`code-explorer`, `data-analyst`, `report-validator`, `approver`) — nenhum
+constrói. O "executor" do loop executor↔aprovador era o próprio prompt do orquestrador, sem
+identidade de engenheiro, sem contexto próprio, sem fronteira de permissão. O segundo: um projeto
+que atualiza o motor por cima de uma instalação antiga fica com a camada 2 defasada (`CLAUDE.md`
+com portão por fase, steering faltando, config sem as chaves novas), e o único remédio era rodar o
+`setup-sdd` de novo — que re-pergunta tudo o que o projeto já respondeu.
+
+- **`data-engineer`** (`.claude/agents/data-engineer.md`): o primeiro membro de uma squad de
+  dados — o papel que **escreve** código de pipeline e SQL dentro do `spec-impl` /
+  `spec-impl-config`. Recebe um **Work Order** (subtarefa, IDs de requisito, critérios de saída
+  pass/fail, risco, escopo de escrita, caminhos permitidos, ponteiros do design) e devolve um
+  **Work Report** (arquivos, comandos e resultados, evidência, critério a critério com prova,
+  observações fora de escopo, parada antecipada, ambiente). Para e reporta — nunca contorna — em
+  risco maior que o declarado, escrita fora do escopo, métrica sem contrato, credencial, qualquer
+  coisa destrutiva. Nunca marca tarefa, nunca aprova, nunca amplia o escopo. Contratos em
+  `rules/orchestration-loop.md` → "Delegation".
+- **Bloco `delegation` em `autoapprove.json`** (template): decide **quem digita**, nunca quem
+  aprova. Nasce **desligado**; ligado, tem flag por nível (`low` inline, `medium` e `high` — este só
+  depois do humano aprovar — vão para o executor). O `spec-impl` e o `spec-impl-config` leem o bloco
+  no Step 0 e imprimem o modo (`mode: … · executor: …`); agente ausente → avisa e executa inline;
+  `spec-impl-investigation` nunca delega (só leitura, via `data-analyst`). O gate não lê o bloco:
+  `high` continua `HUMAN` sempre.
+- **`kit-sync.py audit`** (só leitura, exit 0/1/2): o que a camada 2 deve ao motor instalado como
+  **fato calculado do disco** — tabela de checagens versionada (cada uma sabe em que versão nasceu:
+  steering faltando, `CLAUDE.md` com placeholder / portão por fase / "convenção, não trava" /
+  `spec-impl-auto` como instrução / seção do template ausente / agente instalado sem linha de
+  roteamento, config sem chave nova, `.sdd-new` pendente, sobra de versão anterior, spec sem evals,
+  fase fora do enum), saída humana ou JSON, gravidade `blocking`/`recommended`/`optional`. O
+  `UPGRADE.md` passa a ser gerado **dessa mesma computação** (`kit-sync.py report` reescreve).
+  Roda de dentro do projeto sem o kit por perto. Testes em `tools/tests/`.
+- **`/update-sdd [--dry-run]`** (`.claude/commands/update-sdd.md`): lê o audit e fecha **só** as
+  linhas dele, uma por vez, em ordem de gravidade — steering ausente pelos comandos existentes em
+  modo Sync; chave de config nova com o default preservando valores; `CLAUDE.md` **remendado por
+  seção** a partir do template, com diff e confirmação humana em cada edição; fase de spec
+  normalizada com mapeamento confirmado; `.sdd-new` e sobras apresentados para o humano decidir;
+  evals oferecidas, não exigidas. Nunca sobrescreve `CLAUDE.md`, steering, specs ou valor de
+  config; nunca apaga; nunca re-pergunta intake. Sem pendência, não toca em nada (idempotente).
+  `setup-sdd` ganha o passo 0.5: camada 2 já existe → manda para o `/update-sdd`. Instaladores e
+  `UPGRADE.md` apontam `/update-sdd` no upgrade e `setup-sdd` na primeira instalação; o
+  `CLAUDE.md.template` agora fica **sempre** ao lado do `CLAUDE.md` no destino (é dele que o audit
+  deriva as seções).
+- `CLAUDE.md.template`: linha de roteamento para o `data-engineer` (inerte com delegação desligada),
+  uma frase na seção de auto-approval sobre quem executa, linha do `/update-sdd` na referência
+  rápida. `setup-sdd` §4 oferece a delegação como opt-in com postura recomendada.
+- Instaladores: `$required` / lista do `.sh` com o agente e o comando novos; `kit-history.json`
+  com a entrada 0.9.0.
+
+**Reversibilidade:** `delegation` ausente, inválido ou `enabled: false` → o orquestrador executa,
+byte a byte a 0.8.0. `/update-sdd` é aditivo por construção e só escreve o que o audit listou.
+A spec desta versão está em `.sdd/specs/data-engineer-and-update-sdd/` (dogfooding), com a
+evidência das provas em `evidence/`. Os demais papéis da squad (analytics engineer, data quality,
+platform) ficam para quando a delegação de escrita estiver provada ponta a ponta num projeto real.
+
 ## 0.8.0 — O que cinco meses de uso ensinaram
 
 Esta versão não nasce de uma ideia; nasce de um inventário. Um projeto real rodou o motor 0.4.0

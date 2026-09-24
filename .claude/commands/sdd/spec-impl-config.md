@@ -22,7 +22,13 @@ Execute config/infra tasks for feature **$1**, gating each on a validation step.
 ## Execution Steps
 
 ### Step 0: Approval posture — read the config, don't ask
-Read `.sdd/autoapprove.json` (missing or invalid → `enabled: false`). State the mode in one line.
+Read `.sdd/autoapprove.json` (missing or invalid → `enabled: false` for both blocks). State the mode
+in one line: `mode: manual|loop · executor: self|<agent>(low:no medium:yes high:yes)`.
+**`delegation`** (0.9.0): when enabled, the named agent (default `data-engineer`) executes the
+subtasks at the enabled risk levels — it receives a Work Order with profile `spec-impl-config` and
+validates by **dry-run**, returning a Work Report; you (or the `approver`, loop on) judge it, and
+you keep the bookkeeping. Absent/invalid/off → executor is self, as 0.8.0; agent file missing →
+say so and execute inline. See `orchestration-loop.md` → "Delegation".
 - **`enabled: true`** → run the executor↔approver loop per `.sdd/settings/rules/orchestration-loop.md`
   for every selected task: atomic subtasks, risk per `risk-classification.md`,
   `py tools/approval-gate.py check` before every round (obey the exit code), the VALIDATE cycle

@@ -1,4 +1,4 @@
-# Handoff — SDD Kit v0.8.0
+# Handoff — SDD Kit v0.9.0
 
 Guia rápido para quem está recebendo o kit. Leitura de 3 minutos. Detalhes no `README.md`.
 
@@ -42,12 +42,17 @@ Code com a extensão `anthropic.claude-code`: os mesmos `/sdd:*` rodam no painel
 renderizado no editor, e **Ctrl+Shift+B** roda o linter jogando cada erro de rastreabilidade no painel
 **Problems** — clicável, abre na linha exata. A trava deixa de depender de alguém lembrar de pedir.
 
-## Atualizando de uma versão anterior (0.7.0)
+## Atualizando de uma versão anterior (0.7.0 → 0.9.0)
 
 Reinstale por cima: o instalador faz backup antes de copiar, **preserva** arquivos do motor que você
 tenha editado (a versão nova fica como `<arquivo>.sdd-new`) e escreve **`.sdd/UPGRADE.md`** — leia
-esse arquivo primeiro. Ele diz o que foi preservado e o que a sua camada 2 ainda deve à versão nova,
-com o comando que gera cada pendência. `steering/`, `specs/` e `CLAUDE.md` nunca são tocados.
+esse arquivo primeiro. `steering/`, `specs/` e `CLAUDE.md` nunca são tocados.
+
+Depois, dentro do projeto, rode **`/update-sdd`** (0.9.0): ele lê o audit determinístico
+(`py tools/kit-sync.py audit --target .`) e fecha **só** o que a camada 2 deve à versão nova — steering
+faltando, chave de config nova, `CLAUDE.md` remendado por seção com diff e o seu OK, fase de spec
+fora do enum. Nunca sobrescreve, nunca apaga, nunca re-pergunta o que o projeto já respondeu.
+`--dry-run` só mostra o plano. Não rode o `setup-sdd` de novo: ele mesmo te manda para o `/update-sdd`.
 
 ## Se o projeto tem plataforma de dados (0.6.0)
 
@@ -83,6 +88,15 @@ trava de risco — desde a 0.8.0 não existe comando separado para lembrar (`spe
   tem tarefa marcada e não tem ledger, o loop não rodou nela; o `spec-status` avisa.
 - Liga/desliga por nível em `.sdd/autoapprove.json`. Comece conservador: só `low`, e observe o log encher.
 
+## Quem constrói: `data-engineer` (0.9.0, desligado por padrão)
+
+O primeiro agente do kit que **escreve** código: executor delegado do `spec-impl` /
+`spec-impl-config`. Recebe um Work Order (subtarefa, critérios pass/fail, risco, escopo de escrita,
+caminhos permitidos, ponteiros do design) e devolve um Work Report (arquivos, comandos, evidência,
+critério a critério). Para e reporta — nunca contorna — fora do escopo, em risco maior que o
+declarado, em métrica sem contrato. Liga em `.sdd/autoapprove.json` → `delegation`: **decide quem
+digita, nunca quem aprova**; `high` continua humano. Desligado, é a 0.8.0 byte a byte.
+
 ## Os agentes de dados e a trava de escrita (0.8.0, para projeto com plataforma de dados)
 
 - **`data-analyst`** — toda consulta à plataforma passa por ele: só leitura, escada de amostragem
@@ -102,7 +116,10 @@ uma camada 2 que sobreviveu ao uso. O que **não** rodou lá foi o loop executor
 ligado na config e ninguém chamou o comando; a 0.8.0 existe em boa parte por isso (agora ele roda
 dentro do `spec-impl`). A estreia que ainda falta é justamente essa: uma spec inteira pelo loop, com
 o `approval-log.jsonl` enchendo. O `--spec-only` e o modo read-only das descobertas continuam
-existindo para a primeira vez falhar de forma segura. Manda feedback.
+existindo para a primeira vez falhar de forma segura. Na 0.9.0, o executor delegado (`data-engineer`)
+foi provado em bancada — recusa escrita fora do escopo, reporta risco subclassificado, faz TDD e devolve
+o Work Report no formato — mas **ainda não rodou dentro de um projeto com o hook ligado**: a prova de
+que o `write-guard` dispara na chamada do subagente é a estreia que falta. Manda feedback.
 
 ## Mapa rápido
 
@@ -110,11 +127,12 @@ existindo para a primeira vez falhar de forma segura. Manda feedback.
   portões, rastreabilidade e o modo aprovador automático. Bom para apresentar/ensinar.
 - `README.md` — visão completa e todos os comandos.
 - `CHANGELOG.md` — o que veio em cada versão.
-- `.claude/commands/` — os comandos (`sdd/*` + `prepare-pr`/`review`/`data-quality`).
+- `.claude/commands/` — os comandos (`sdd/*` + `prepare-pr`/`review`/`data-quality` + `update-sdd`).
 - `.sdd/settings/` — motor (rules + templates). `.sdd/steering/` nasce vazio (é gerado).
 - `tools/spec-lint.py`, `tools/approval-gate.py`, `tools/write-guard.py` — as travas determinísticas
-  (rastreabilidade, loop, escopo de escrita); `tools/kit-sync.py` — continuidade entre versões.
-- `.claude/agents/` — `code-explorer`, `approver`, `data-analyst`, `report-validator`.
+  (rastreabilidade, loop, escopo de escrita); `tools/kit-sync.py` — continuidade entre versões e o
+  `audit` que alimenta o `/update-sdd` (testes em `tools/tests/`).
+- `.claude/agents/` — `code-explorer`, `approver`, `data-analyst`, `report-validator`, `data-engineer`.
 - `.sdd/settings/rules/` — `data-readiness.md` (escada de fontes), `evals.md` (golden questions),
   `answer-provenance.md` (fonte/freshness/confiança em toda resposta com número),
   `spec-artifacts.md` (fases canônicas + `contract-impact.md` / `evidence/` / `rollback.md`).

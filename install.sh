@@ -9,7 +9,8 @@
 # O que faz:
 #   - copia a CAMADA 1 (motor): comandos SDD, rules, templates, as tools
 #     (spec-lint, approval-gate, kit-sync, write-guard), os subagentes
-#     (code-explorer, approver, data-analyst, report-validator) + a skill setup-sdd
+#     (code-explorer, approver, data-analyst, report-validator, data-engineer)
+#     + a skill setup-sdd + o comando /update-sdd
 #   - cria .sdd/steering e .sdd/specs VAZIOS (a serem gerados por /sdd:steering)
 #   - instala CLAUDE.md a partir do template (sem sobrescrever um existente)
 #   - instala .sdd/autoapprove.json e .sdd/write-scope.json editaveis (desligados,
@@ -43,6 +44,22 @@ if [ "$TARGET" = "$KIT_DIR" ]; then
   echo "erro: o destino é a própria pasta do kit. Aponte para o seu projeto."
   exit 1
 fi
+
+# Falha cedo se o kit estiver incompleto (espelha a lista $required do install.ps1)
+for req in \
+  .claude/commands/sdd .claude/commands/prepare-pr.md .claude/commands/update-sdd.md \
+  .claude/agents/code-explorer.md .claude/agents/data-analyst.md \
+  .claude/agents/report-validator.md .claude/agents/data-engineer.md \
+  .claude/skills/setup-sdd/SKILL.md .sdd/settings .sdd/settings/rules/spec-artifacts.md \
+  .sdd/settings/templates/vscode/tasks.json .sdd/settings/templates/write-scope.json \
+  .sdd/settings/templates/claude/settings.local.json .sdd/settings/kit-history.json \
+  tools/spec-lint.py tools/approval-gate.py tools/kit-sync.py tools/write-guard.py \
+  CLAUDE.md.template; do
+  if [ ! -e "$KIT_DIR/$req" ]; then
+    echo "erro: kit incompleto - faltando $req em $KIT_DIR"
+    exit 1
+  fi
+done
 
 echo "==> instalando SDD Kit ($(cat "$KIT_DIR/VERSION" 2>/dev/null || echo '?')) em: $TARGET"
 
@@ -80,7 +97,7 @@ cp -R "$KIT_DIR/.claude/commands/." "$TARGET/.claude/commands/"   # sdd/* + top-
 cp -R "$KIT_DIR/.claude/agents/."   "$TARGET/.claude/agents/"
 cp -R "$KIT_DIR/.claude/skills/."   "$TARGET/.claude/skills/"
 cp -R "$KIT_DIR/.sdd/settings/."    "$TARGET/.sdd/settings/"
-cp "$KIT_DIR/tools/"*.py "$TARGET/tools/"                       # spec-lint.py + approval-gate.py
+cp "$KIT_DIR/tools/"*.py "$TARGET/tools/"                       # so os .py da raiz de tools (tests/ nao vai)
 cp "$KIT_DIR/VERSION" "$TARGET/.sdd/SDD_KIT_VERSION" 2>/dev/null || true
 
 # Config do modo aprovador automatico: instala a versao editavel (nao sobrescreve)
@@ -110,9 +127,11 @@ fi
 [ -e "$TARGET/.sdd/specs/.gitkeep" ]    || : > "$TARGET/.sdd/specs/.gitkeep"
 
 # --- Camada 2: CLAUDE.md (não sobrescreve) -----------------------------------
+# O template SEMPRE fica ao lado: é dele que o audit (kit-sync.py audit) e o
+# /update-sdd derivam as seções que o CLAUDE.md do projeto ainda não tem.
+cp "$KIT_DIR/CLAUDE.md.template" "$TARGET/CLAUDE.md.template"
 if [ -f "$TARGET/CLAUDE.md" ]; then
-  cp "$KIT_DIR/CLAUDE.md.template" "$TARGET/CLAUDE.md.template"
-  echo "    CLAUDE.md já existe — template copiado ao lado como CLAUDE.md.template"
+  echo "    CLAUDE.md já existe — intocado; template atualizado ao lado (CLAUDE.md.template)"
 else
   cp "$KIT_DIR/CLAUDE.md.template" "$TARGET/CLAUDE.md"
   echo "    CLAUDE.md criado a partir do template (edite os {{PLACEHOLDERS}})"
@@ -149,6 +168,11 @@ echo "==> motor instalado. Leia primeiro: .sdd/UPGRADE.md"
 echo "    (o que foi preservado, o que revisar e o que a camada 2 ainda deve)"
 echo ""
 echo "    Próximos passos (no agente, dentro de $TARGET):"
+echo ""
+echo "    ATUALIZAÇÃO de uma versão anterior?  rode  /update-sdd"
+echo "       (fecha só o que a camada 2 deve ao motor novo; --dry-run só mostra o plano)"
+echo "    PRIMEIRA instalação?  siga abaixo:"
+echo ""
 echo "    1. rode a skill  setup-sdd        (bootstrap guiado — recomendado)"
 echo "       ou manualmente:"
 echo "    2. edite CLAUDE.md  (troque os {{PLACEHOLDERS}})"

@@ -126,13 +126,14 @@ ideia → requirements.md → design.md → tasks.md → código
 | `/sdd:spec-tasks <feat> [-y]` | quebra em tarefas de 1–3h com marcadores `(P)` |
 | `/sdd:spec-lint <feat>` | **valida rastreabilidade** (cobertura + refs) |
 | **`/sdd:spec-evals <feat> [--run]`** | golden questions + regressão — **valida correção**, não estrutura |
-| `/sdd:spec-impl <feat> [task]` | implementa via TDD — **roda o loop executor↔aprovador sozinho** se `autoapprove.json` estiver ligado (0.8.0) |
+| `/sdd:spec-impl <feat> [task]` | implementa via TDD — **roda o loop executor↔aprovador sozinho** se `autoapprove.json` estiver ligado (0.8.0); com `delegation` ligado, quem digita é o agente `data-engineer` (0.9.0) |
 | `/sdd:spec-impl-auto <feat> [task]` | alias explícito do mesmo loop |
 | `/sdd:spec-quick "<desc>" [--spec-only] [--auto]` | roda tudo num comando |
 | `/sdd:spec-status <feat>` | relatório de progresso |
 | **`/prepare-pr [base]`** | self-review do diff + abre PR no host detectado |
 | **`/review [<pr>\|--diff]`** | revisa um PR aberto ou o seu diff de trabalho |
 | **`/data-quality <table> [--spec <feat>]`** | roda checks de DQ read-only na plataforma de dados |
+| **`/update-sdd [--dry-run]`** | depois de atualizar o motor: fecha **só** o que a camada 2 deve à versão nova (audit determinístico, aditivo, nunca sobrescreve) — 0.9.0 |
 
 ### Perfis de implementação (escolha por tipo de trabalho)
 
@@ -335,6 +336,46 @@ e "sim" explícito antes de cada import. Sempre `high`.
 
 ---
 
+## Quem constrói: o executor delegado (0.9.0, desligado por padrão)
+
+Até a 0.8.0 todo subagente do kit **lê ou julga**; quem escrevia código era o próprio orquestrador,
+sem identidade nem fronteira. A 0.9.0 dá ao loop um executor de verdade: o agente
+**`data-engineer`** recebe um **Work Order** (uma subtarefa: IDs de requisito, critérios de saída
+pass/fail, risco, escopo de escrita, caminhos permitidos, ponteiros do `design.md`) e devolve um
+**Work Report** (arquivos, comandos e resultados, evidência, cada critério com prova, o que viu fora
+do escopo, se parou e por quê, se o hook existia onde rodou). Ele **para e reporta** — nunca
+contorna — em risco maior que o declarado, escrita fora do escopo, métrica sem contrato, credencial
+ou qualquer coisa destrutiva; nunca marca tarefa, nunca aprova, nunca amplia o escopo.
+
+Liga em `.sdd/autoapprove.json` → `delegation` (nasce `enabled: false`, o que é a 0.8.0 byte a
+byte). Flag por nível: `low` fica inline, `medium` e `high` (este só **depois** do humano aprovar)
+vão para o executor. **Decide quem digita, nunca quem aprova** — o gate não lê esse bloco e `high`
+continua `HUMAN`. Com o loop ligado, o `approver` julga o Work Report e o ledger registra
+`executor=data-engineer`; com o loop desligado, o orquestrador confere cada critério contra a
+evidência antes de marcar. O `spec-impl-investigation` nunca delega. A squad completa (analytics
+engineer, data quality, platform) fica para quando isso estiver provado num projeto real.
+
+## Atualizar sem refazer: `/update-sdd` (0.9.0)
+
+Reinstalar traz o motor novo; a camada 2 (`CLAUDE.md`, steering, configs, specs) fica onde estava —
+com portão por fase de 2 versões atrás, sem `integrations.md`, sem a chave nova da config. Antes o
+remédio era o `setup-sdd` de novo, re-perguntando tudo. Agora:
+
+1. **`py tools/kit-sync.py audit --target .`** calcula, só leitura, o que a camada 2 deve ao motor
+   instalado — tabela versionada (cada checagem sabe em que versão nasceu), gravidade
+   `blocking`/`recommended`/`optional`, saída humana ou `--format json`, exit 0/1/2. É a **mesma
+   computação** que escreve o `UPGRADE.md`. Testes em `tools/tests/`.
+2. **`/update-sdd`** lê o audit e fecha **só** aquelas linhas, uma por vez: steering ausente pelos
+   comandos existentes (Sync, aditivo); chave de config nova com o default, valores existentes
+   intactos; `CLAUDE.md` **remendado por seção** a partir do template, cada edição com diff e o seu
+   OK; fase de spec normalizada com mapeamento confirmado; `.sdd-new` e sobras apresentados para
+   você decidir; evals oferecidas, não exigidas. **Nunca** sobrescreve `CLAUDE.md`, steering, specs
+   ou valor de config; **nunca** apaga; **nunca** re-pergunta intake. Sem pendência, não toca em
+   nada. `--dry-run` só mostra o plano.
+
+`setup-sdd` reconhece uma camada 2 existente e manda para o `/update-sdd`; instaladores e
+`UPGRADE.md` apontam o caminho certo (upgrade → `/update-sdd`; primeira vez → `setup-sdd`).
+
 ## Três invariantes a proteger (não quebre isto ao adaptar)
 
 1. **Separação QUÊ / COMO** — `requirements.md` descreve comportamento testável, **sem** nomes
@@ -362,8 +403,8 @@ sdd-kit-de/
 ├── .claude/
 │   ├── commands/
 │   │   ├── sdd/               MOTOR — fluxo + spec-lint + spec-evals + perfis + discover-tools + absorb-knowledge
-│   │   └── prepare-pr.md · review.md · data-quality.md   comandos de entrega
-│   ├── agents/                code-explorer · approver (sem escrita) · data-analyst (só leitura) · report-validator (julga, não edita)
+│   │   └── prepare-pr.md · review.md · data-quality.md · update-sdd.md   comandos de entrega + atualização da camada 2
+│   ├── agents/                code-explorer · approver (sem escrita) · data-analyst (só leitura) · report-validator (julga, não edita) · data-engineer (executor delegado, 0.9.0)
 │   └── skills/setup-sdd/      assistente de instalação (conversa)
 ├── .sdd/
 │   ├── settings/rules/        MOTOR — regras (EARS, tarefas, discovery, risco, evals, data-readiness, proveniência, spec-artifacts)
@@ -377,7 +418,8 @@ sdd-kit-de/
     ├── spec-lint.py           o validador de rastreabilidade (+ fase canônica)
     ├── approval-gate.py       a trava do loop executor↔aprovador
     ├── write-guard.py         a trava de escopo de escrita (hook PreToolUse, --self-test)
-    └── kit-sync.py            backup, preservação de edições locais e UPGRADE.md
+    ├── kit-sync.py            backup, preservação de edições locais, UPGRADE.md e o `audit` (0.9.0)
+    └── tests/                 testes do audit (não são instalados)
 ```
 
 O que está sob `.claude/commands/sdd/` e `.sdd/settings/` é **motor genérico** — não sabe nada
@@ -426,7 +468,20 @@ de licença deles e a lista do que é original deste kit estão em `THIRD_PARTY_
 
 ---
 
-*SDD Kit 0.8.0 — adapte à vontade. Comece pelo `setup-sdd`.*
+*SDD Kit 0.9.0 — adapte à vontade. Comece pelo `setup-sdd`; para atualizar, `/update-sdd`.*
+
+### Novidades da 0.9.0
+- **`data-engineer`** — o primeiro agente do kit que **constrói**: executor delegado do `spec-impl` /
+  `spec-impl-config`, Work Order → Work Report, preso ao escopo de escrita, para e reporta em vez de
+  contornar. Liga em `autoapprove.json` → `delegation` (nasce desligado; decide quem digita, nunca
+  quem aprova).
+- **`kit-sync.py audit`** — o que a camada 2 deve ao motor, como fato calculado do disco: checagens
+  versionadas, gravidade, JSON; gera o `UPGRADE.md`. Só leitura, exit 0/1/2, testes em `tools/tests/`.
+- **`/update-sdd [--dry-run]`** — fecha só o que o audit achou, aditivamente: `CLAUDE.md` por seção
+  com diff confirmado, config por chave, steering em Sync; nunca sobrescreve, nunca apaga, nunca
+  re-pergunta. `setup-sdd` redireciona para ele quando a camada 2 já existe.
+- `CLAUDE.md.template` com roteamento para o `data-engineer` e o `/update-sdd`; template sempre
+  copiado ao lado do `CLAUDE.md` no destino; instaladores e `kit-history.json` atualizados.
 
 ### Novidades da 0.8.0
 - **O loop auto roda dentro do `spec-impl`** — ligado em `autoapprove.json`, todo `/sdd:spec-impl*` (e o

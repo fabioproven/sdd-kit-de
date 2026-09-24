@@ -663,9 +663,53 @@
     </div>
   </section>
 
+  <!-- v0.9.0 — QUEM CONSTRÓI, E COMO ATUALIZAR SEM REFAZER -->
+  <section class="blk">
+    <h2 class="hdln">Quem constrói, e como atualizar sem refazer <span class="mono" style="font-size:14px;color:var(--agent-ink);background:var(--agent-soft);padding:2px 8px;border-radius:6px;vertical-align:middle">v0.9.0</span></h2>
+    <p class="sub">Até aqui todo subagente <b>lê ou julga</b>; quem escrevia era o orquestrador, sem identidade nem fronteira. E quem atualizava o motor por cima de uma instalação antiga ficava com a camada 2 defasada — e o único remédio era refazer o setup.</p>
+
+    <div class="risks">
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">executor ·</span> o primeiro que constrói</h4>
+        <p><span class="mono">data-engineer</span> recebe um <b>Work Order</b> (subtarefa, critérios pass/fail, risco, escopo de escrita, ponteiros do design) e devolve um <b>Work Report</b> (arquivos, comandos, evidência, critério a critério). Para e reporta — nunca contorna — fora do escopo, em risco maior que o declarado, em métrica sem contrato. Nunca marca, nunca aprova.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--human)">
+        <h4><span class="rk" style="color:var(--human-ink)">quem digita ≠ quem aprova</span></h4>
+        <p>Liga em <span class="mono">autoapprove.json → delegation</span>, <b>desligado por padrão</b>. Flag por nível: <span class="mono">low</span> inline, <span class="mono">medium</span> e <span class="mono">high</span> (só <b>depois</b> do humano) vão ao executor. O gate não lê o bloco: <b>high continua humano</b>. Desligado, é a 0.8.0 byte a byte.</p>
+      </div>
+      <div class="risk" style="border-top-color:var(--agent)">
+        <h4><span class="rk" style="color:var(--agent-ink)">audit ·</span> o que a camada 2 deve, como fato</h4>
+        <p><span class="mono">kit-sync.py audit</span>: checagens <b>versionadas</b> (cada uma sabe em que versão nasceu), gravidade, JSON, só leitura, exit 0/1/2. É a mesma computação que escreve o <span class="mono">UPGRADE.md</span> — uma verdade, não duas.</p>
+      </div>
+    </div>
+
+    <div class="thread" style="margin-top:16px">
+      <div class="node">
+        <p class="where">/update-sdd</p><span class="id">aditivo</span>
+        <p class="desc">fecha <b>só</b> as linhas do audit, uma por vez, em ordem de gravidade</p>
+      </div>
+      <div class="node">
+        <p class="where">CLAUDE.md</p><span class="id" style="color:var(--human-ink);background:var(--human-soft)">diff + OK</span>
+        <p class="desc">remendado <b>por seção</b> a partir do template; nunca reescrito</p>
+      </div>
+      <div class="node">
+        <p class="where">config</p><span class="id">por chave</span>
+        <p class="desc">chave nova entra com o default; valor existente fica</p>
+      </div>
+      <div class="node">
+        <p class="where">setup-sdd</p><span class="id">redireciona</span>
+        <p class="desc">camada 2 já existe → <span class="mono">/update-sdd</span>; nunca re-pergunta</p>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <p style="margin:0"><b>Squad em etapas, de propósito:</b> um papel novo só entra se puder, ler ou julgar algo que o orquestrador não pode — senão é parágrafo no comando, não agente. A 0.9.0 prova o executor que escreve; analytics engineer, data quality e platform ficam para quando a delegação estiver provada num projeto real.</p>
+    </div>
+  </section>
+
   <footer class="ft">
     <p class="core">O ciclo, em uma frase: <b>escreva o QUÊ testável → aprove → derive o COMO rastreável → aprove → quebre em tarefas verificáveis → aprove → execute marcando o que terminou.</b> Tudo o mais — steering, subagentes, hooks, aprovador automático — é a camada que faz isso não colapsar num repo grande.</p>
-    <p class="meta">Fluxo SDD portável (SDD Kit v0.8.0) · o exemplo que ancora as estações é uma spec de investigação, por isso o passo 5 produz um relatório, não código. Modo aprovador automático desligado por padrão — os portões humanos são o fallback; ligado, o loop roda dentro do próprio <span class="mono">spec-impl</span>.</p>
+    <p class="meta">Fluxo SDD portável (SDD Kit v0.9.0) · o exemplo que ancora as estações é uma spec de investigação, por isso o passo 5 produz um relatório, não código. Modo aprovador automático desligado por padrão — os portões humanos são o fallback; ligado, o loop roda dentro do próprio <span class="mono">spec-impl</span>.</p>
     <p class="meta">Desenvolvido por <b>Fabio Provençale</b> · <a href="mailto:fabio.provencale@gmail.com">fabio.provencale@gmail.com</a> · <a href="https://www.linkedin.com/in/fabio-provencale/" rel="noopener">LinkedIn</a> · Licença MIT.</p>
   </footer>
 

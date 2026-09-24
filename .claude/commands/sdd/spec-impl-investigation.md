@@ -31,6 +31,8 @@ Read `.sdd/autoapprove.json` (missing or invalid → `enabled: false`). State th
   say so, fall back to manual.
 - **`false` or absent** → manual mode, identical to before 0.8.0.
 Same loop as `/sdd:spec-impl-auto`, which remains as an explicit alias.
+**This profile never delegates to the `data-engineer` executor**, whatever `delegation` says:
+investigation writes no code, and data access stays with the read-only `data-analyst`.
 
 ### Step 1: Load Context
 - Read `.sdd/specs/$1/spec.json`, `requirements.md`, `design.md`, `tasks.md`
