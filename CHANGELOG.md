@@ -3,6 +3,19 @@
 Formato: mais recente primeiro. O "motor" (`.claude/commands`, `.sdd/settings`, `tools/`) é a
 camada versionada; reinstalar uma versão nova não toca no seu `.sdd/steering/` nem nas suas specs.
 
+## 0.9.2 — Destino sem marcador de versão: tudo que colide é do projeto
+
+Complemento da 0.9.1, que saiu com um teste vermelho (o encadeamento de release mascarou o exit
+code — corrigido no processo, não no kit). Caso coberto: destino **sem** `.sdd/SDD_KIT_VERSION`.
+Sem marcador, o kit nunca foi instalado ali, então qualquer arquivo com nome de motor que já
+exista é obra do projeto — a 0.9.1 ainda o tratava como "publicado por alguma versão anterior" e
+sobrescrevia.
+
+- **`tools/kit-sync.py`**: sem marcador, a lista de "já publicado" é vazia → toda colisão é
+  preservada e a versão do kit fica ao lado como `.sdd-new`. Pior caso: uma cópia antiga do motor
+  que alguém colocou à mão fica no lugar, visível no `UPGRADE.md`, com a nova ao lado — reversível.
+  Os três testes de colisão em `tools/tests/` agora passam (10/10).
+
 ## 0.9.1 — Colisão por nome reconhecida também na primeira instalação com manifesto
 
 Correção sem mudança de comportamento pretendido. A preservação por colisão de nome (0.8.0) —

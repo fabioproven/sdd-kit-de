@@ -468,7 +468,11 @@ de licença deles e a lista do que é original deste kit estão em `THIRD_PARTY_
 
 ---
 
-*SDD Kit 0.9.1 — adapte à vontade. Comece pelo `setup-sdd`; para atualizar, `/update-sdd`.*
+*SDD Kit 0.9.2 — adapte à vontade. Comece pelo `setup-sdd`; para atualizar, `/update-sdd`.*
+
+### Novidades da 0.9.2
+- **`kit-sync`**: destino sem `.sdd/SDD_KIT_VERSION` = kit nunca instalado → todo arquivo que colide
+  por nome com o motor é preservado (kit ao lado como `.sdd-new`). 10/10 testes.
 
 ### Novidades da 0.9.1
 - **Correção no `kit-sync`**: a preservação por colisão de nome agora vale também na primeira

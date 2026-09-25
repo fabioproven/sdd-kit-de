@@ -269,7 +269,9 @@ def cmd_finish(args):
     preserved, first_time = [], (not prev_manifest)
     # So versoes que o destino pode ter tido: ate a que estava instalada, ou,
     # sem marcador, tudo que e anterior a versao que esta entrando agora.
-    ever_shipped = kit_history_paths(kit, up_to=prev_version, before=version)
+    # Sem marcador, o kit nunca esteve aqui: qualquer arquivo com nome de motor
+    # e obra do projeto e fica (o do kit vai ao lado como .sdd-new) - 0.9.2.
+    ever_shipped = kit_history_paths(kit, up_to=prev_version) if prev_version else frozenset()
 
     if backup:
         for rel in rels:

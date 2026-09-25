@@ -1,4 +1,4 @@
-# Handoff — SDD Kit v0.9.1
+# Handoff — SDD Kit v0.9.2
 
 Guia rápido para quem está recebendo o kit. Leitura de 3 minutos. Detalhes no `README.md`.
 
